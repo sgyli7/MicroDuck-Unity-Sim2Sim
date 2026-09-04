@@ -31,7 +31,8 @@ namespace AgenticRobot.MicroDuck.Mujoco
             TerrainModuleDefinition module = ActiveModule;
             return controller.ResetActiveRobotAt(
                 module.SpawnPosition,
-                module.SpawnYawDegrees);
+                module.SpawnYawDegrees,
+                module.InitialVelocityMetersPerSecond);
         }
 
         public bool Next()

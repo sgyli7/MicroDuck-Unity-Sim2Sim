@@ -141,7 +141,10 @@ namespace AgenticRobot.MicroDuck.Mujoco
             MujocoLib.mj_forward(model, data);
         }
 
-        public void ResetToPose(Vector3 leggedRootPosition, float yawDegrees)
+        public void ResetToPose(
+            Vector3 leggedRootPosition,
+            float yawDegrees,
+            Vector3 initialLinearVelocityMetersPerSecond)
         {
             ResetToHome();
             Vector3 position = leggedRootPosition;
@@ -154,6 +157,13 @@ namespace AgenticRobot.MicroDuck.Mujoco
             MjEngineTool.SetMjQuaternion(
                 data->qpos + rootQposAddress + 3,
                 Quaternion.Euler(0f, yawDegrees, 0f));
+            int rootJointId = RequiredId(
+                MujocoLib.mjtObj.mjOBJ_JOINT,
+                "trunk_base_freejoint");
+            int rootDofAddress = model->jnt_dofadr[rootJointId];
+            MjEngineTool.SetMjVector3(
+                data->qvel + rootDofAddress,
+                initialLinearVelocityMetersPerSecond);
             MujocoLib.mj_forward(model, data);
         }
 

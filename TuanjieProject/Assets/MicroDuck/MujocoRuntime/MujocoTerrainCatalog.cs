@@ -110,6 +110,9 @@ namespace AgenticRobot.MicroDuck.Mujoco
         public float MaximumSurfaceVariationMeters { get; }
         public float MinimumSlopeDegrees { get; }
         public float MaximumSlopeDegrees { get; }
+        public Vector3 InitialVelocityMetersPerSecond => Id == "upstream_roller_slope"
+            ? new Vector3(0.35f, 0f, 0f)
+            : Vector3.zero;
         public ReadOnlyCollection<int> RecommendedPolicySlots { get; }
         public ReadOnlyCollection<TerrainPrimitiveDefinition> Primitives { get; }
     }

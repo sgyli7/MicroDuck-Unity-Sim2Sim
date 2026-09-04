@@ -95,6 +95,97 @@ namespace AgenticRobot.MicroDuck.Tests
                 Is.EqualTo(navigator.ActiveModule.SpawnPosition.y).Within(0.01f));
         }
 
+        [UnityTest]
+        [Timeout(120000)]
+        public IEnumerator WalkingPolicyTraversesOfficialRandomGridWithoutFalling()
+        {
+            yield return LoadNativeScene();
+            MujocoDemoController controller =
+                UnityEngine.Object.FindObjectOfType<MujocoDemoController>();
+            MujocoTerrainNavigator navigator =
+                UnityEngine.Object.FindObjectOfType<MujocoTerrainNavigator>();
+            MujocoKeyboardPolicyInput keyboard =
+                UnityEngine.Object.FindObjectOfType<MujocoKeyboardPolicyInput>();
+            keyboard.enabled = false;
+            yield return WaitForHealthy(controller);
+
+            Assert.That(navigator.Select("upstream_random_grid"), Is.True);
+            Assert.That(controller.SwitchPolicy(1), Is.True, controller.Fault);
+            controller.SetTwist(0.25f, 0f, 0f);
+            float startX = controller.RootPositionMeters.x;
+            float minimumUpright = 1f;
+            for (int step = 0; step < 800; step++)
+            {
+                yield return new WaitForFixedUpdate();
+                minimumUpright = Mathf.Min(minimumUpright, controller.TrunkUpright);
+            }
+
+            float distance = controller.RootPositionMeters.x - startX;
+            Assert.That(controller.IsHealthy, Is.True, controller.Fault);
+            Assert.That(minimumUpright, Is.GreaterThan(0.75f),
+                $"Official rough-grid walk fell: upright={minimumUpright:R}, distance={distance:R}.");
+            Assert.That(distance, Is.GreaterThan(0.05f),
+                $"Official rough-grid walk made no progress: upright={minimumUpright:R}, distance={distance:R}.");
+        }
+
+        [UnityTest]
+        [Timeout(120000)]
+        public IEnumerator RollerPolicyDescendsTheEasyOfficialSlope()
+        {
+            yield return LoadNativeScene();
+            MujocoDemoController controller =
+                UnityEngine.Object.FindObjectOfType<MujocoDemoController>();
+            MujocoTerrainNavigator navigator =
+                UnityEngine.Object.FindObjectOfType<MujocoTerrainNavigator>();
+            MujocoKeyboardPolicyInput keyboard =
+                UnityEngine.Object.FindObjectOfType<MujocoKeyboardPolicyInput>();
+            MjScene scene = UnityEngine.Object.FindObjectOfType<MjScene>();
+            int preDestroyCount = 0;
+            int postInitCount = 0;
+            scene.preDestroyEvent += (_, __) => preDestroyCount++;
+            scene.postInitEvent += (_, __) => postInitCount++;
+            keyboard.enabled = false;
+            yield return WaitForHealthy(controller);
+
+            Assert.That(navigator.Select("upstream_roller_slope"), Is.True);
+            Assert.That(controller.SwitchPolicy(7), Is.True, controller.Fault);
+            yield return WaitForHealthy(controller);
+            controller.SetTwist(0f, 0f, 0f);
+            float startX = controller.RootPositionMeters.x;
+            float minimumUpright = 1f;
+            for (int step = 0; step < 1000; step++)
+            {
+                yield return new WaitForFixedUpdate();
+                minimumUpright = Mathf.Min(minimumUpright, controller.TrunkUpright);
+                if (!controller.IsHealthy)
+                {
+                    Assert.Fail(
+                        $"Roller controller became unhealthy at step={step}, "
+                        + $"ticks={controller.PolicyTicks}, backend='{controller.BackendName}', "
+                        + $"fault='{controller.Fault}', preDestroy={preDestroyCount}, "
+                        + $"postInit={postInitCount}, position={controller.RootPositionMeters}.");
+                }
+            }
+
+            float distance = controller.RootPositionMeters.x - startX;
+            Assert.That(minimumUpright, Is.GreaterThan(0.65f),
+                $"Official easy-slope roll fell: upright={minimumUpright:R}, distance={distance:R}.");
+            Assert.That(distance, Is.GreaterThan(0.02f),
+                $"Official easy-slope roll did not descend: upright={minimumUpright:R}, distance={distance:R}.");
+        }
+
+        private static IEnumerator LoadNativeScene()
+        {
+#if UNITY_EDITOR
+            yield return EditorSceneManager.LoadSceneAsyncInPlayMode(
+                NativeSceneAssetPath,
+                new LoadSceneParameters(LoadSceneMode.Single));
+#else
+            yield return SceneManager.LoadSceneAsync(0, LoadSceneMode.Single);
+#endif
+            yield return null;
+        }
+
         private static IEnumerator WaitForHealthy(MujocoDemoController controller)
         {
             Assert.That(controller, Is.Not.Null);

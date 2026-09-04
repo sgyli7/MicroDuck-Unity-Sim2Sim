@@ -31,6 +31,7 @@ namespace AgenticRobot.MicroDuck.Mujoco
         private ModelRestPose rollerRestPose;
         private Vector3 resetPositionMeters = new Vector3(0f, 0.125f, 0f);
         private float resetYawDegrees;
+        private Vector3 resetInitialVelocityMetersPerSecond;
 
         public int ActivePolicySlot { get; private set; }
         public string ActivePolicyName { get; private set; } = "not loaded";
@@ -311,10 +312,14 @@ namespace AgenticRobot.MicroDuck.Mujoco
             }
         }
 
-        public bool ResetActiveRobotAt(Vector3 leggedRootPosition, float yawDegrees)
+        public bool ResetActiveRobotAt(
+            Vector3 leggedRootPosition,
+            float yawDegrees,
+            Vector3 initialVelocityMetersPerSecond)
         {
             resetPositionMeters = leggedRootPosition;
             resetYawDegrees = yawDegrees;
+            resetInitialVelocityMetersPerSecond = initialVelocityMetersPerSecond;
             if (stepper == null)
             {
                 return false;
@@ -375,6 +380,33 @@ namespace AgenticRobot.MicroDuck.Mujoco
             stepper?.Dispose();
             stepper = null;
             resetAfterSceneInitialization = false;
+
+            // The official plug-in can legitimately coalesce component changes
+            // into more than one recreation when a model hierarchy is switched
+            // outside our LateUpdate keyboard path. The first recreation consumes
+            // pendingRuntime; prepare a fresh runtime for every later recreation
+            // so the active policy cannot be left detached from the new model.
+            if (pendingRuntime == null && ActivePolicySlot > 0)
+            {
+                PolicyModelBinding binding = FindBinding(ActivePolicySlot);
+                if (binding == null || binding.model == null)
+                {
+                    Fault = $"Cannot restore {ActivePolicyName} after MuJoCo recreation: "
+                        + "its Barracuda model binding is missing.";
+                    return;
+                }
+
+                try
+                {
+                    pendingRuntime = new BarracudaPolicyRuntime(binding.model);
+                    pendingVariant = activeEntry.RobotVariant;
+                }
+                catch (Exception error)
+                {
+                    Fault = $"Cannot restore {ActivePolicyName} after MuJoCo recreation: "
+                        + error.Message;
+                }
+            }
         }
 
         private void OnSceneInitialized(object sender, MjStepArgs args)
@@ -526,7 +558,10 @@ namespace AgenticRobot.MicroDuck.Mujoco
 
         private void ResetBoundNativeState()
         {
-            stepper.ResetToPose(resetPositionMeters, resetYawDegrees);
+            Vector3 initialVelocity = activeEntry.RobotVariant == RobotVariant.Roller
+                ? resetInitialVelocityMetersPerSecond
+                : Vector3.zero;
+            stepper.ResetToPose(resetPositionMeters, resetYawDegrees, initialVelocity);
             stepper.PlaceBallForRole(activeEntry.Role);
             scene.SyncUnityToMjState();
         }
