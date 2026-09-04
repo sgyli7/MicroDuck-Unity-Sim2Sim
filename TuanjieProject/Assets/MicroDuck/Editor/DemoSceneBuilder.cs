@@ -103,7 +103,10 @@ namespace AgenticRobot.MicroDuck.Editor
             DisableImportedFloor(roller);
 
             controller.Configure(mujocoScene, leggedWithBall, roller, LoadPolicyBindings());
-            runtimeObject.AddComponent<MujocoKeyboardPolicyInput>().Configure(controller);
+            MujocoTerrainNavigator navigator =
+                runtimeObject.AddComponent<MujocoTerrainNavigator>();
+            navigator.Configure(controller);
+            runtimeObject.AddComponent<MujocoKeyboardPolicyInput>().Configure(controller, navigator);
             runtimeObject.AddComponent<MujocoPolicyStatusOverlay>().Configure(controller);
             runtimeObject.AddComponent<MujocoPlayerSmokeProbe>().Configure(controller);
 

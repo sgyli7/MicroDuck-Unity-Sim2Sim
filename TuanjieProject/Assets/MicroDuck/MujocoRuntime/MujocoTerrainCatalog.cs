@@ -9,7 +9,7 @@ namespace AgenticRobot.MicroDuck.Mujoco
     public enum TerrainPrimitiveKind
     {
         Box,
-        Sphere,
+        Ellipsoid,
         Cylinder,
     }
 
@@ -336,7 +336,7 @@ namespace AgenticRobot.MicroDuck.Mujoco
             return Module(
                 "upstream_roller_slope",
                 "官方滚轮长坡",
-                new Vector3(easySpawnX, easySpawnSurface + 0.1385f, laneZ[0]),
+                new Vector3(easySpawnX, easySpawnSurface + 0.125f, laneZ[0]),
                 true,
                 "训练基准 · 2° / 11° / 20°",
                 0f,
@@ -374,7 +374,7 @@ namespace AgenticRobot.MicroDuck.Mujoco
             };
             for (int index = 0; index < rocks.Length; index++)
             {
-                primitives.Add(Sphere(
+                primitives.Add(Ellipsoid(
                     $"rock_{index:00}",
                     rocks[index],
                     new Vector3(0.42f + (index * 0.04f), 0.28f, 0.36f),
@@ -455,7 +455,7 @@ namespace AgenticRobot.MicroDuck.Mujoco
                 id,
                 displayName,
                 spawnPosition,
-                90f,
+                0f,
                 isTrainingMatched,
                 difficulty,
                 maximumSurfaceVariationMeters,
@@ -481,7 +481,7 @@ namespace AgenticRobot.MicroDuck.Mujoco
                 materialKey);
         }
 
-        private static TerrainPrimitiveDefinition Sphere(
+        private static TerrainPrimitiveDefinition Ellipsoid(
             string id,
             Vector3 center,
             Vector3 size,
@@ -489,7 +489,7 @@ namespace AgenticRobot.MicroDuck.Mujoco
         {
             return new TerrainPrimitiveDefinition(
                 id,
-                TerrainPrimitiveKind.Sphere,
+                TerrainPrimitiveKind.Ellipsoid,
                 center,
                 size,
                 Vector3.zero,
