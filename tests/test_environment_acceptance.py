@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -51,7 +52,7 @@ def _valid_report(tmp_path: Path) -> dict:
         "requiresVisualReview": True,
         "capturedAt": datetime.now(timezone.utc).isoformat(),
         "playerPath": str(player),
-        "playerSha256": "a" * 64,
+        "playerSha256": hashlib.sha256(player.read_bytes()).hexdigest(),
         "playerLog": str(log),
         "playerLogErrorCount": 0,
         "video": str(video),
@@ -80,6 +81,7 @@ def test_validator_accepts_complete_fresh_environment_evidence(tmp_path: Path) -
         (lambda data: data["terrainCheckpoints"].pop("rock_steps"), "rock_steps"),
         (lambda data: data["cameraCheckpoints"].pop("FreeFly"), "FreeFly"),
         (lambda data: data.update(playerLogErrorCount=1), "playerLogErrorCount"),
+        (lambda data: data.update(playerSha256="a" * 64), "playerSha256"),
     ],
 )
 def test_validator_rejects_incomplete_or_failed_evidence(
@@ -105,3 +107,5 @@ def test_visual_acceptance_tour_names_every_required_capture() -> None:
         assert camera_mode in source
     assert "requiresVisualReview = $true" in source
     assert "captureCompleted = $true" in source
+    assert "return to flat_plaza for handoff" in source
+    assert "latest-report.json" in source

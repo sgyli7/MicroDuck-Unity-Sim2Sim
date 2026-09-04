@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -65,6 +66,8 @@ def validate_report(report_path: Path) -> dict[str, object]:
         and all(character in "0123456789abcdefABCDEF" for character in digest),
         "playerSha256 must be a 64-character hexadecimal digest",
     )
+    actual_digest = hashlib.sha256(player.read_bytes()).hexdigest()
+    _require(digest.lower() == actual_digest, "playerSha256 does not match playerPath")
 
     terrain = report.get("terrainCheckpoints")
     camera = report.get("cameraCheckpoints")

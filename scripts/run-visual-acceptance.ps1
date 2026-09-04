@@ -47,6 +47,12 @@ public static class MicroDuckVisualAcceptanceNative
 
     [DllImport("user32.dll")]
     public static extern void keybd_event(byte virtualKey, byte scanCode, uint flags, UIntPtr extraInfo);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll")]
+    public static extern void mouse_event(uint flags, int dx, int dy, int data, UIntPtr extraInfo);
 }
 '@
 
@@ -79,6 +85,35 @@ function Send-KeyPress {
     Send-KeyDown -Window $Window -VirtualKey $VirtualKey
     Start-Sleep -Milliseconds 80
     Send-KeyUp -Window $Window -VirtualKey $VirtualKey
+}
+
+function Send-MouseOrbit {
+    param(
+        [Parameter(Mandatory = $true)][IntPtr]$Window,
+        [Parameter(Mandatory = $true)][int]$DeltaX,
+        [Parameter(Mandatory = $true)][int]$DeltaY
+    )
+    $rect = New-Object MicroDuckVisualAcceptanceNative+RECT
+    if (-not [MicroDuckVisualAcceptanceNative]::GetWindowRect($Window, [ref]$rect)) {
+        throw "Could not position the orbit gesture in the Player window."
+    }
+    $centerX = [int](($rect.Left + $rect.Right) / 2)
+    $centerY = [int](($rect.Top + $rect.Bottom) / 2)
+    [MicroDuckVisualAcceptanceNative]::SetForegroundWindow($Window) | Out-Null
+    [MicroDuckVisualAcceptanceNative]::SetCursorPos($centerX, $centerY) | Out-Null
+    [MicroDuckVisualAcceptanceNative]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
+    [MicroDuckVisualAcceptanceNative]::mouse_event(0x0001, $DeltaX, $DeltaY, 0, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 80
+    [MicroDuckVisualAcceptanceNative]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
+}
+
+function Send-MouseWheel {
+    param(
+        [Parameter(Mandatory = $true)][IntPtr]$Window,
+        [Parameter(Mandatory = $true)][int]$Delta
+    )
+    [MicroDuckVisualAcceptanceNative]::SetForegroundWindow($Window) | Out-Null
+    [MicroDuckVisualAcceptanceNative]::mouse_event(0x0800, 0, 0, $Delta, [UIntPtr]::Zero)
 }
 
 function Save-WindowFrame {
@@ -172,6 +207,8 @@ $events = @(
     [pscustomobject]@{ At = 2.0; Name = "camera Rear to Top"; Kind = "press"; Key = [byte]0x43 },
     [pscustomobject]@{ At = 3.0; Name = "camera Top to Showcase"; Kind = "press"; Key = [byte]0x43 },
     [pscustomobject]@{ At = 4.0; Name = "camera Showcase to Side"; Kind = "press"; Key = [byte]0x43 },
+    [pscustomobject]@{ At = 4.3; Name = "orbit follow camera with LMB"; Kind = "orbit"; DeltaX = 90; DeltaY = -25 },
+    [pscustomobject]@{ At = 4.7; Name = "zoom follow camera with mouse wheel"; Kind = "wheel"; Delta = 120 },
     [pscustomobject]@{ At = 5.0; Name = "enter camera FreeFly"; Kind = "press"; Key = [byte]0x09 },
     [pscustomobject]@{ At = 5.3; Name = "move FreeFly camera forward"; Kind = "down"; Key = [byte]0x57 },
     [pscustomobject]@{ At = 6.2; Name = "stop FreeFly camera"; Kind = "up"; Key = [byte]0x57 },
@@ -188,7 +225,9 @@ $events = @(
     [pscustomobject]@{ At = 17.5; Name = "terrain rock_steps"; Kind = "press"; Key = [byte]0x54 },
     [pscustomobject]@{ At = 17.8; Name = "return to legged walking policy 1"; Kind = "press"; Key = [byte]0x31 },
     [pscustomobject]@{ At = 20.2; Name = "terrain stairs_bridge"; Kind = "press"; Key = [byte]0x54 },
-    [pscustomobject]@{ At = 22.8; Name = "final upright reset"; Kind = "press"; Key = [byte]0x52 }
+    [pscustomobject]@{ At = 22.0; Name = "return to flat_plaza for handoff"; Kind = "press"; Key = [byte]0x54 },
+    [pscustomobject]@{ At = 22.3; Name = "select standing policy 2 for handoff"; Kind = "press"; Key = [byte]0x32 },
+    [pscustomobject]@{ At = 22.7; Name = "final upright reset on flat_plaza"; Kind = "press"; Key = [byte]0x52 }
 )
 $durationSeconds = 24.0
 $frameInterval = 1.0 / $FramesPerSecond
@@ -218,11 +257,17 @@ try {
                     $heldKeys.Remove($event.Key) | Out-Null
                     Send-KeyUp -Window $window -VirtualKey $event.Key
                 }
+                "orbit" {
+                    Send-MouseOrbit -Window $window -DeltaX $event.DeltaX -DeltaY $event.DeltaY
+                }
+                "wheel" {
+                    Send-MouseWheel -Window $window -Delta $event.Delta
+                }
             }
             $eventEvidence.Add([pscustomobject]@{
                 name = $event.Name
                 kind = $event.Kind
-                virtualKey = [int]$event.Key
+                virtualKey = if ($null -ne $event.Key) { [int]$event.Key } else { $null }
                 sentAtSeconds = [Math]::Round($clock.Elapsed.TotalSeconds, 3)
             })
             $nextEvent++
@@ -328,6 +373,10 @@ if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
 if ($LASTEXITCODE -ne 0) {
     throw "Environment acceptance evidence validation failed: $validationPath"
 }
+$latestReportPath = Join-Path $OutputDirectory "latest-report.json"
+$latestValidationPath = Join-Path $OutputDirectory "latest-validation.json"
+Copy-Item -LiteralPath $reportPath -Destination $latestReportPath -Force
+Copy-Item -LiteralPath $validationPath -Destination $latestValidationPath -Force
 
 if ($launchedHere -and -not $KeepPlayerOpen) {
     Stop-Process -Id $player.Id -Force
