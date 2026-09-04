@@ -10,6 +10,7 @@ namespace AgenticRobot.MicroDuck.Mujoco
     {
         [SerializeField] private MujocoDemoController controller;
         [SerializeField] private MujocoTerrainNavigator terrainNavigator;
+        [SerializeField] private MujocoCameraRig cameraRig;
         [SerializeField] private float forwardSpeed = 0.3f;
         [SerializeField] private float lateralSpeed = 0.2f;
         [SerializeField] private float yawRate = 0.8f;
@@ -24,10 +25,12 @@ namespace AgenticRobot.MicroDuck.Mujoco
 
         public void Configure(
             MujocoDemoController value,
-            MujocoTerrainNavigator navigator)
+            MujocoTerrainNavigator navigator,
+            MujocoCameraRig camera)
         {
             controller = value;
             terrainNavigator = navigator;
+            cameraRig = camera;
         }
 
         private void LateUpdate()
@@ -45,10 +48,11 @@ namespace AgenticRobot.MicroDuck.Mujoco
                 }
             }
 
+            bool cameraOwnsNavigation = cameraRig != null && cameraRig.OwnsNavigationInput;
             controller.SetTwist(
-                Axis(KeyCode.S, KeyCode.W) * forwardSpeed,
-                Axis(KeyCode.D, KeyCode.A) * lateralSpeed,
-                Axis(KeyCode.E, KeyCode.Q) * yawRate);
+                cameraOwnsNavigation ? 0f : Axis(KeyCode.S, KeyCode.W) * forwardSpeed,
+                cameraOwnsNavigation ? 0f : Axis(KeyCode.D, KeyCode.A) * lateralSpeed,
+                cameraOwnsNavigation ? 0f : Axis(KeyCode.E, KeyCode.Q) * yawRate);
             controller.SetHead(
                 Axis(KeyCode.K, KeyCode.I) * headRange,
                 Axis(KeyCode.DownArrow, KeyCode.UpArrow) * headRange,
@@ -57,7 +61,7 @@ namespace AgenticRobot.MicroDuck.Mujoco
             controller.SetBody(
                 Axis(KeyCode.PageDown, KeyCode.PageUp) * bodyHeightRange,
                 Axis(KeyCode.X, KeyCode.Z) * bodyAngleRange,
-                Axis(KeyCode.V, KeyCode.C) * bodyAngleRange);
+                Axis(KeyCode.Comma, KeyCode.Period) * bodyAngleRange);
 
             if (Input.GetKeyDown(KeyCode.Space))
             {

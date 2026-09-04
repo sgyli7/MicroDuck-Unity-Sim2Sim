@@ -155,8 +155,8 @@ namespace AgenticRobot.MicroDuck.Editor
             Material sky = GetOrCreateMaterial("Alpine-Skybox", Color.white, 0f, skyShader);
             sky.SetFloat("_SunSize", 0.045f);
             sky.SetFloat("_SunSizeConvergence", 7f);
-            sky.SetFloat("_AtmosphereThickness", 0.82f);
-            sky.SetColor("_SkyTint", new Color(0.38f, 0.66f, 0.92f));
+            sky.SetFloat("_AtmosphereThickness", 0.68f);
+            sky.SetColor("_SkyTint", new Color(0.12f, 0.38f, 1f));
             sky.SetColor("_GroundColor", new Color(0.37f, 0.43f, 0.31f));
             sky.SetFloat("_Exposure", 1.22f);
             RenderSettings.skybox = sky;

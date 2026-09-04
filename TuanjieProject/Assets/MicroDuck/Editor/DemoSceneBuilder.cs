@@ -106,14 +106,16 @@ namespace AgenticRobot.MicroDuck.Editor
             MujocoTerrainNavigator navigator =
                 runtimeObject.AddComponent<MujocoTerrainNavigator>();
             navigator.Configure(controller);
-            runtimeObject.AddComponent<MujocoKeyboardPolicyInput>().Configure(controller, navigator);
             runtimeObject.AddComponent<MujocoPolicyStatusOverlay>().Configure(controller);
             runtimeObject.AddComponent<MujocoPlayerSmokeProbe>().Configure(controller);
 
             Camera camera = CreateCamera();
             camera.fieldOfView = 35f;
             camera.nearClipPlane = 0.03f;
-            camera.gameObject.AddComponent<MujocoFollowCamera>().Configure(controller);
+            MujocoCameraRig cameraRig = camera.gameObject.AddComponent<MujocoCameraRig>();
+            cameraRig.Configure(controller);
+            runtimeObject.AddComponent<MujocoKeyboardPolicyInput>()
+                .Configure(controller, navigator, cameraRig);
 
             if (!EditorSceneManager.SaveScene(nativeScene, NativeSceneAssetPath))
             {
