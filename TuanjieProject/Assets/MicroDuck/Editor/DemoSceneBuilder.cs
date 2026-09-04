@@ -106,7 +106,8 @@ namespace AgenticRobot.MicroDuck.Editor
             MujocoTerrainNavigator navigator =
                 runtimeObject.AddComponent<MujocoTerrainNavigator>();
             navigator.Configure(controller);
-            runtimeObject.AddComponent<MujocoPolicyStatusOverlay>().Configure(controller);
+            MujocoPolicyStatusOverlay overlay =
+                runtimeObject.AddComponent<MujocoPolicyStatusOverlay>();
             runtimeObject.AddComponent<MujocoPlayerSmokeProbe>().Configure(controller);
 
             Camera camera = CreateCamera();
@@ -114,6 +115,7 @@ namespace AgenticRobot.MicroDuck.Editor
             camera.nearClipPlane = 0.03f;
             MujocoCameraRig cameraRig = camera.gameObject.AddComponent<MujocoCameraRig>();
             cameraRig.Configure(controller);
+            overlay.Configure(controller, navigator, cameraRig);
             runtimeObject.AddComponent<MujocoKeyboardPolicyInput>()
                 .Configure(controller, navigator, cameraRig);
 

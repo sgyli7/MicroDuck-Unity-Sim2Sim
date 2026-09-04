@@ -151,6 +151,20 @@ namespace AgenticRobot.MicroDuck.Tests
             Assert.That(Object.FindObjectsOfType<MujocoPlayerSmokeProbe>(true), Has.Length.EqualTo(1));
             Assert.That(Object.FindObjectsOfType<MicroDuckDemoController>(true), Is.Empty);
 
+            MujocoTerrainNavigator navigator = Object.FindObjectOfType<MujocoTerrainNavigator>(true);
+            MujocoCameraRig cameraRig = Object.FindObjectOfType<MujocoCameraRig>(true);
+            MujocoPolicyStatusOverlay nativeOverlay =
+                Object.FindObjectOfType<MujocoPolicyStatusOverlay>(true);
+            Assert.That(navigator, Is.Not.Null);
+            Assert.That(cameraRig, Is.Not.Null);
+            Assert.That(nativeOverlay.Controller,
+                Is.SameAs(Object.FindObjectOfType<MujocoDemoController>(true)));
+            Assert.That(nativeOverlay.Navigator, Is.SameAs(navigator));
+            Assert.That(nativeOverlay.CameraRig, Is.SameAs(cameraRig));
+            Assert.That(nativeOverlay.BuildTerrainText(), Does.Contain("中央安全广场"));
+            Assert.That(nativeOverlay.BuildControlsText(), Does.Contain("T / Shift+T"));
+            Assert.That(nativeOverlay.BuildControlsText(), Does.Contain("Tab"));
+
             MjGlobalSettings[] globalSettings = Object.FindObjectsOfType<MjGlobalSettings>(true);
             Assert.That(globalSettings, Has.Length.EqualTo(1));
             Assert.That(globalSettings[0].UseRawGameObjectNames, Is.True,
