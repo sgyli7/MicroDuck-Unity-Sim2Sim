@@ -227,9 +227,13 @@ $events = @(
     [pscustomobject]@{ At = 17.5; Name = "terrain rock_steps"; Kind = "press"; Key = [byte]0x54 },
     [pscustomobject]@{ At = 17.8; Name = "return to legged walking policy 1"; Kind = "press"; Key = [byte]0x31 },
     [pscustomobject]@{ At = 20.2; Name = "terrain stairs_bridge"; Kind = "press"; Key = [byte]0x54 },
-    [pscustomobject]@{ At = 22.0; Name = "return to flat_plaza for handoff"; Kind = "press"; Key = [byte]0x54 },
-    [pscustomobject]@{ At = 22.3; Name = "select standing policy 2 for handoff"; Kind = "press"; Key = [byte]0x32 },
-    [pscustomobject]@{ At = 22.7; Name = "final upright reset on flat_plaza"; Kind = "press"; Key = [byte]0x52 }
+    [pscustomobject]@{ At = 21.45; Name = "camera handoff Side to Rear"; Kind = "press"; Key = [byte]0x43 },
+    [pscustomobject]@{ At = 21.65; Name = "camera handoff Rear to Top"; Kind = "press"; Key = [byte]0x43 },
+    [pscustomobject]@{ At = 21.85; Name = "camera handoff Top to Showcase"; Kind = "press"; Key = [byte]0x43 },
+    [pscustomobject]@{ At = 22.05; Name = "restore camera Side preset for handoff"; Kind = "press"; Key = [byte]0x43 },
+    [pscustomobject]@{ At = 22.3; Name = "return to flat_plaza for handoff"; Kind = "press"; Key = [byte]0x54 },
+    [pscustomobject]@{ At = 22.55; Name = "select standing policy 2 for handoff"; Kind = "press"; Key = [byte]0x32 },
+    [pscustomobject]@{ At = 22.8; Name = "final upright reset on flat_plaza"; Kind = "press"; Key = [byte]0x52 }
 )
 $durationSeconds = 24.0
 $frameInterval = 1.0 / $FramesPerSecond
