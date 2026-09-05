@@ -16,6 +16,8 @@ if ([string]::IsNullOrWhiteSpace($PlayerPath)) {
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $ProjectRoot "artifacts\visual-acceptance\interactive"
 }
+$PlayerPath = [System.IO.Path]::GetFullPath($PlayerPath)
+$OutputDirectory = [System.IO.Path]::GetFullPath($OutputDirectory)
 
 Add-Type -AssemblyName System.Drawing
 Add-Type @'

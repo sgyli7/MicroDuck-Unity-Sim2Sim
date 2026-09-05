@@ -109,3 +109,4 @@ def test_visual_acceptance_tour_names_every_required_capture() -> None:
     assert "captureCompleted = $true" in source
     assert "return to flat_plaza for handoff" in source
     assert "latest-report.json" in source
+    assert '$OutputDirectory = [System.IO.Path]::GetFullPath($OutputDirectory)' in source
