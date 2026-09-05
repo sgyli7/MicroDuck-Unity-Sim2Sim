@@ -1,7 +1,13 @@
-# AgenticRobotGame
+# MicroDuck-Unity-Sim2Sim
 
-Internal, non-commercial MVP for running MicroDuck's official MuJoCo models and
-ONNX policies inside Tuanjie Engine with keyboard control.
+MicroDuck 的 **Unity / 团结引擎版 Sim2Sim** 工程：在团结引擎
+(`2022.3.62t14`, `1.10.2`) 中运行并验证官方 MuJoCo 模型与 ONNX 策略。
+
+这是 [MicroDuck-Godot-Simi2Sim](https://github.com/sgyli7/MicroDuck-Godot-Simi2Sim)
+的 Unity / 团结引擎对应实现，不是 Godot/Jolt 项目。项目以 MuJoCo 的原生
+运行时作为权威物理后端；团结引擎负责场景、输入、渲染、Windows 构建和
+Barracuda ONNX 推理，同时保留 PhysX/ArticulationBody 路径用于校准与比较。
+由于 MicroDuck 3D 模型的许可证限制，本仓仅面向非商业验证与研究使用。
 
 The accepted runtime architecture is:
 
