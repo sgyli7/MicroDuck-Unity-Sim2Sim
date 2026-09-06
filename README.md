@@ -104,6 +104,23 @@ therefore requires an interactive Windows desktop. List all gates with:
 Tuanjie is discovered from the supported Hub locations. Override it when
 needed with `-TuanjiePath 'D:\path\to\Tuanjie.exe'`.
 
+## macOS
+
+Windows PowerShell 入口保持不变。Apple Silicon 上的对等链路是
+`scripts/run-mvp-macos.py`：同一组 Python / Tuanjie gate，加上 `BuildMacOS`
+与 in-player 巡演，并且把 CUDA 训练、Windows 构建和缺席的 Codely proof 显式记为
+`skipped` / `not-applicable`。前置条件、阶段对照、产物路径和用户操作项见
+[macOS 部署与验收](docs/macos-deployment.md)。
+
+```bash
+python3 scripts/run-mvp-macos.py --json
+open Builds/macOS/AgenticRobotGame.app
+```
+
+编辑器打开 `TuanjieProject/Assets/MicroDuck/Generated/Scenes/MicroDuckNativeMvp.unity`。
+覆盖编辑器路径时使用 `--tuanjie-path` 或 `TUANJIE_EDITOR`；默认锁定
+`/Applications/Tuanjie/Hub/Editor/2022.3.62t14/Tuanjie.app/Contents/MacOS/Tuanjie`。
+
 The important outputs are:
 
 - `artifacts/mvp/mvp-report.json`: ordered pass/fail report and stage timings;
