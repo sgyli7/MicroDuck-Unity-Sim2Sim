@@ -132,25 +132,25 @@ print(json.dumps({
     "walkingInitializerEqual": walking_params == hf_params,
 }))
 """
-IMPORT_PROBE_SCRIPT = r"""
+IMPORT_ONE_SCRIPT = r"""
 import json
+import sys
 
-mods = {}
-for name in ("mujoco", "torch", "warp", "mjlab"):
-    try:
-        __import__(name)
-        mods[name] = True
-    except Exception as exc:
-        mods[name] = str(exc)
-cuda = False
-mps = False
+name = sys.argv[1]
 try:
-    import torch
-    cuda = bool(torch.cuda.is_available())
-    mps = bool(getattr(torch.backends, "mps", None) and torch.backends.mps.is_available())
+    __import__(name)
+    print(json.dumps({"ok": True}))
 except Exception as exc:
-    mods["torch"] = str(exc)
-print(json.dumps({"mods": mods, "cuda": cuda, "mps": mps}))
+    print(json.dumps({"ok": False, "error": str(exc)}))
+"""
+TORCH_DEVICE_SCRIPT = r"""
+import json
+import torch
+
+print(json.dumps({
+    "cuda": bool(torch.cuda.is_available()),
+    "mps": bool(getattr(torch.backends, "mps", None) and torch.backends.mps.is_available()),
+}))
 """
 WANDB_LIST_SCRIPT = r"""
 import json
@@ -294,6 +294,42 @@ def run_command(
         timeout=timeout,
         env=env,
     )
+
+
+def try_command(
+    command: Sequence[str],
+    *,
+    cwd: Path,
+    timeout: int | None = None,
+    env: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    try:
+        completed = run_command(command, cwd=cwd, timeout=timeout, env=env)
+    except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout if isinstance(exc.stdout, str) else ""
+        stderr = exc.stderr if isinstance(exc.stderr, str) else ""
+        return {
+            "returncode": None,
+            "timedOut": True,
+            "timeoutSeconds": timeout,
+            "stdout": stdout[-500:],
+            "stderr": stderr[-500:],
+            "error": f"timed out after {timeout} seconds",
+        }
+    except OSError as exc:
+        return {
+            "returncode": None,
+            "timedOut": False,
+            "stdout": "",
+            "stderr": "",
+            "error": str(exc),
+        }
+    return {
+        "returncode": completed.returncode,
+        "timedOut": False,
+        "stdout": completed.stdout or "",
+        "stderr": completed.stderr or "",
+    }
 
 
 def run_tuanjie(
@@ -1069,7 +1105,7 @@ def stage_environment_acceptance(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def _verify_hf_policy(python: Path, hf_onnx: Path, walking: Path) -> dict[str, Any]:
-    completed = run_command(
+    result = try_command(
         [
             str(python),
             "-c",
@@ -1080,9 +1116,15 @@ def _verify_hf_policy(python: Path, hf_onnx: Path, walking: Path) -> dict[str, A
         cwd=hf_onnx.parent,
         timeout=60,
     )
-    if completed.returncode != 0:
-        return {"status": "failed", "error": (completed.stderr or completed.stdout)[-800:]}
-    payload = json.loads(completed.stdout)
+    if result["timedOut"] or result["returncode"] != 0:
+        return {
+            "status": "failed",
+            "error": result.get("error") or (result["stderr"] or result["stdout"])[-800:],
+        }
+    try:
+        payload = json.loads(result["stdout"])
+    except json.JSONDecodeError as exc:
+        return {"status": "failed", "error": str(exc)}
     payload["status"] = "passed"
     return payload
 
@@ -1090,21 +1132,22 @@ def _verify_hf_policy(python: Path, hf_onnx: Path, walking: Path) -> dict[str, A
 def _list_wandb_checkpoint(python: Path, cwd: Path) -> dict[str, Any]:
     if not os.environ.get("WANDB_API_KEY"):
         return {"status": "blocked", "reason": "blocked: needs wandb login"}
-    completed = run_command(
+    result = try_command(
         [str(python), "-c", WANDB_LIST_SCRIPT, "yr25mna4"],
         cwd=cwd,
         timeout=60,
         env=os.environ.copy(),
     )
-    if completed.returncode != 0:
+    if result["timedOut"] or result["returncode"] != 0:
         return {
             "status": "failed",
-            "reason": (completed.stderr or completed.stdout or "wandb listing failed")[-800:],
+            "reason": result.get("error")
+            or (result["stderr"] or result["stdout"] or "wandb listing failed")[-800:],
         }
     try:
-        return json.loads(completed.stdout)
+        return json.loads(result["stdout"])
     except json.JSONDecodeError:
-        return {"status": "failed", "reason": (completed.stdout or "")[-800:]}
+        return {"status": "failed", "reason": result["stdout"][-800:]}
 
 
 def _checkpoint_status(root: Path, artifacts: Path, python: Path) -> dict[str, Any]:
@@ -1130,7 +1173,7 @@ def _checkpoint_status(root: Path, artifacts: Path, python: Path) -> dict[str, A
             "validator": "skipped: no ppo-smoke.json training report",
         }
     output = artifacts / "training" / "ppo-runtime.json"
-    completed = run_command(
+    result = try_command(
         [
             str(python),
             str(validator),
@@ -1142,13 +1185,55 @@ def _checkpoint_status(root: Path, artifacts: Path, python: Path) -> dict[str, A
         cwd=root,
         timeout=120,
     )
-    if completed.returncode != 0:
+    if result["timedOut"] or result["returncode"] != 0:
         return {
             "status": "failed",
-            "reason": (completed.stderr or completed.stdout or "validate-training-runtime failed")[-800:],
+            "reason": result.get("error")
+            or (result["stderr"] or result["stdout"] or "validate-training-runtime failed")[-800:],
             "ptFiles": found,
         }
     return {"status": "passed", "ptFiles": found, "report": posix(output)}
+
+
+def _probe_upstream_imports(probe_python: Path, cwd: Path) -> dict[str, Any]:
+    mods: dict[str, Any] = {}
+    for name in ("mujoco", "torch", "warp", "mjlab"):
+        result = try_command(
+            [str(probe_python), "-c", IMPORT_ONE_SCRIPT, name],
+            cwd=cwd,
+            timeout=90,
+        )
+        if result["timedOut"]:
+            mods[name] = result["error"]
+            continue
+        if result["returncode"] != 0:
+            mods[name] = (result["stderr"] or result.get("error") or "import failed")[-400:]
+            continue
+        try:
+            payload = json.loads(result["stdout"])
+        except json.JSONDecodeError as exc:
+            mods[name] = str(exc)
+            continue
+        mods[name] = True if payload.get("ok") else payload.get("error")
+    devices = {"cuda": False, "mps": False}
+    if mods.get("torch") is True:
+        device_result = try_command(
+            [str(probe_python), "-c", TORCH_DEVICE_SCRIPT],
+            cwd=cwd,
+            timeout=30,
+        )
+        if device_result["returncode"] == 0 and not device_result["timedOut"]:
+            try:
+                devices = json.loads(device_result["stdout"])
+            except json.JSONDecodeError:
+                devices = {"cuda": False, "mps": False, "error": "invalid torch device probe"}
+        else:
+            devices = {
+                "cuda": False,
+                "mps": False,
+                "error": device_result.get("error") or device_result["stderr"][-200:],
+            }
+    return {"mods": mods, "cuda": devices.get("cuda"), "mps": devices.get("mps"), "devices": devices}
 
 
 def stage_training_prep(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1156,95 +1241,106 @@ def stage_training_prep(ctx: dict[str, Any]) -> dict[str, Any]:
     artifacts: Path = ctx["artifacts"]
     python = venv_python(root)
     notes: dict[str, Any] = {"blocked": [], "completed": [], "failed": []}
-    audit_path = artifacts / "policy-audit.json"
-    policies: Any = []
-    if audit_path.is_file():
-        audit = json.loads(audit_path.read_text(encoding="utf-8"))
-        policies = audit.get("policies") or audit
-        notes["completed"].append("policy-audit.json reused")
-    else:
-        notes["failed"].append("policy-audit.json missing; policy hashes not reused")
-    rl = root / ".cache" / "upstream" / "microduck_rl"
-    uv = resolve_uv()
-    sync = run_command([uv, "sync", "--frozen"], cwd=rl, timeout=300)
-    notes["microduckRlUvSync"] = {
-        "returncode": sync.returncode,
-        "stderr": (sync.stderr or "")[-500:],
-        "stdout": (sync.stdout or "")[-200:],
-    }
-    if sync.returncode != 0:
-        notes["failed"].append("microduck_rl uv sync --frozen failed")
-    rl_python = rl / ".venv" / "bin" / "python"
-    probe_python = rl_python if rl_python.is_file() else python
-    probe = run_command([str(probe_python), "-c", IMPORT_PROBE_SCRIPT], cwd=root, timeout=60)
-    if probe.returncode == 0:
-        notes["imports"] = json.loads(probe.stdout)
-        notes["importPython"] = posix(probe_python)
-    else:
-        notes["imports"] = {"error": (probe.stderr or probe.stdout)[-500:]}
-        notes["failed"].append("import probe failed")
-    hf_dir = root / ".cache" / "hf" / "microduck-rough-walk-e"
-    env = with_local_bin()
-    hf = shutil.which("hf", path=env["PATH"])
-    if not hf:
-        install = run_command([uv, "tool", "install", "huggingface_hub"], cwd=root, timeout=180, env=env)
-        notes["hfInstall"] = {
-            "returncode": install.returncode,
-            "stderr": (install.stderr or "")[-400:],
-        }
-        env = with_local_bin()
-        hf = shutil.which("hf", path=env["PATH"]) or str(Path.home() / ".local" / "bin" / "hf")
-        if install.returncode != 0:
-            notes["failed"].append("uv tool install huggingface_hub failed")
-    download = run_command(
-        [
-            hf or "hf",
-            "download",
-            "RemiFabre/microduck-rough-walk-e",
-            "policy.onnx",
-            "manifest.json",
-            "--local-dir",
-            str(hf_dir),
-        ],
-        cwd=root,
-        timeout=180,
-        env=env,
-    )
-    sidecar: dict[str, Any] = {"downloadReturncode": download.returncode}
-    onnx_path = hf_dir / "policy.onnx"
-    walking = (
-        root
-        / "TuanjieProject"
-        / "Assets"
-        / "MicroDuck"
-        / "Generated"
-        / "Policies"
-        / "Original"
-        / "alpha_walking.onnx"
-    )
-    if download.returncode == 0 and onnx_path.is_file():
-        sidecar["verify"] = _verify_hf_policy(python, onnx_path, walking)
-        if sidecar["verify"].get("status") == "passed":
-            notes["completed"].append("hf sidecar downloaded and verified")
+    try:
+        audit_path = artifacts / "policy-audit.json"
+        policies: Any = []
+        if audit_path.is_file():
+            audit = json.loads(audit_path.read_text(encoding="utf-8"))
+            policies = audit.get("policies") or audit
+            notes["completed"].append("policy-audit.json reused")
         else:
-            notes["failed"].append("hf sidecar ONNX verify failed")
-    else:
-        notes["failed"].append("hf download failed or policy.onnx missing")
-        sidecar["stderr"] = (download.stderr or download.stdout or "")[-400:]
-    wandb = _list_wandb_checkpoint(python, root)
-    notes["wandb"] = wandb
-    if wandb.get("status") == "blocked":
-        notes["blocked"].append(wandb.get("reason") or "blocked: needs wandb login")
-    elif wandb.get("status") != "listed":
-        notes["failed"].append("wandb listing failed")
-    checkpoint = _checkpoint_status(root, artifacts, python)
-    notes["checkpoint"] = checkpoint
-    if checkpoint.get("status") == "blocked":
-        notes["blocked"].append(checkpoint.get("reason") or "blocked: no checkpoint")
-    elif checkpoint.get("status") == "failed":
-        notes["failed"].append("validate-training-runtime failed")
-    notes["policies"] = policies
-    notes["hfSidecar"] = sidecar
+            notes["failed"].append("policy-audit.json missing; policy hashes not reused")
+        rl = root / ".cache" / "upstream" / "microduck_rl"
+        uv = resolve_uv()
+        sync = try_command([uv, "sync", "--frozen"], cwd=rl, timeout=600)
+        notes["microduckRlUvSync"] = {
+            "returncode": sync["returncode"],
+            "timedOut": sync["timedOut"],
+            "stderr": (sync["stderr"] or "")[-500:],
+            "stdout": (sync["stdout"] or "")[-200:],
+            "error": sync.get("error"),
+        }
+        if sync["timedOut"] or sync["returncode"] not in (0,):
+            notes["failed"].append("microduck_rl uv sync --frozen failed")
+        rl_python = rl / ".venv" / "bin" / "python"
+        probe_python = rl_python if rl_python.is_file() else python
+        notes["imports"] = _probe_upstream_imports(probe_python, root)
+        notes["importPython"] = posix(probe_python)
+        if any(value is not True for value in notes["imports"].get("mods", {}).values()):
+            notes["failed"].append("upstream import probe recorded missing or timed-out modules")
+        hf_dir = root / ".cache" / "hf" / "microduck-rough-walk-e"
+        env = with_local_bin()
+        hf = shutil.which("hf", path=env["PATH"])
+        if not hf:
+            install = try_command(
+                [uv, "tool", "install", "huggingface_hub"],
+                cwd=root,
+                timeout=180,
+                env=env,
+            )
+            notes["hfInstall"] = {
+                "returncode": install["returncode"],
+                "stderr": (install["stderr"] or "")[-400:],
+                "error": install.get("error"),
+            }
+            env = with_local_bin()
+            hf = shutil.which("hf", path=env["PATH"]) or str(Path.home() / ".local" / "bin" / "hf")
+            if install["timedOut"] or install["returncode"] not in (0,):
+                notes["failed"].append("uv tool install huggingface_hub failed")
+        download = try_command(
+            [
+                hf or "hf",
+                "download",
+                "RemiFabre/microduck-rough-walk-e",
+                "policy.onnx",
+                "manifest.json",
+                "--local-dir",
+                str(hf_dir),
+            ],
+            cwd=root,
+            timeout=180,
+            env=env,
+        )
+        sidecar: dict[str, Any] = {
+            "downloadReturncode": download["returncode"],
+            "timedOut": download["timedOut"],
+        }
+        onnx_path = hf_dir / "policy.onnx"
+        walking = (
+            root
+            / "TuanjieProject"
+            / "Assets"
+            / "MicroDuck"
+            / "Generated"
+            / "Policies"
+            / "Original"
+            / "alpha_walking.onnx"
+        )
+        if download["returncode"] == 0 and onnx_path.is_file():
+            sidecar["verify"] = _verify_hf_policy(python, onnx_path, walking)
+            if sidecar["verify"].get("status") == "passed":
+                notes["completed"].append("hf sidecar downloaded and verified")
+            else:
+                notes["failed"].append("hf sidecar ONNX verify failed")
+        else:
+            notes["failed"].append("hf download failed or policy.onnx missing")
+            sidecar["stderr"] = (download["stderr"] or download.get("error") or "")[-400:]
+        wandb = _list_wandb_checkpoint(python, root)
+        notes["wandb"] = wandb
+        if wandb.get("status") == "blocked":
+            notes["blocked"].append(wandb.get("reason") or "blocked: needs wandb login")
+        elif wandb.get("status") != "listed":
+            notes["failed"].append("wandb listing failed")
+        checkpoint = _checkpoint_status(root, artifacts, python)
+        notes["checkpoint"] = checkpoint
+        if checkpoint.get("status") == "blocked":
+            notes["blocked"].append(checkpoint.get("reason") or "blocked: no checkpoint")
+        elif checkpoint.get("status") == "failed":
+            notes["failed"].append("validate-training-runtime failed")
+        notes["policies"] = policies
+        notes["hfSidecar"] = sidecar
+    except (OSError, ValueError, json.JSONDecodeError, RuntimeError) as exc:
+        notes["failed"].append(str(exc))
     write_json(artifacts / "training" / "macos-training-prep.json", notes)
     return {"trainingPrep": notes}
 
