@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using AgenticRobot.MicroDuck.Mujoco;
 using Mujoco;
 using Unity.Barracuda;
@@ -109,6 +110,8 @@ namespace AgenticRobot.MicroDuck.Editor
             MujocoPolicyStatusOverlay overlay =
                 runtimeObject.AddComponent<MujocoPolicyStatusOverlay>();
             runtimeObject.AddComponent<MujocoPlayerSmokeProbe>().Configure(controller);
+            MujocoPlayerAcceptanceTour tour =
+                runtimeObject.AddComponent<MujocoPlayerAcceptanceTour>();
 
             Camera camera = CreateCamera();
             camera.fieldOfView = 35f;
@@ -118,6 +121,7 @@ namespace AgenticRobot.MicroDuck.Editor
             overlay.Configure(controller, navigator, cameraRig);
             runtimeObject.AddComponent<MujocoKeyboardPolicyInput>()
                 .Configure(controller, navigator, cameraRig);
+            tour.Configure(controller, navigator, cameraRig);
 
             if (!EditorSceneManager.SaveScene(nativeScene, NativeSceneAssetPath))
             {
@@ -245,6 +249,67 @@ namespace AgenticRobot.MicroDuck.Editor
             Debug.Log(
                 $"Built MicroDuck MVP for Windows x64 at '{options.locationPathName}' "
                 + $"({report.summary.totalSize} bytes)." );
+        }
+
+        public static BuildPlayerOptions CreateMacOSBuildOptions()
+        {
+            string repositoryRoot = Path.GetFullPath(
+                Path.Combine(Application.dataPath, "..", ".."));
+            string appPath = Path.Combine(
+                repositoryRoot,
+                "Builds",
+                "macOS",
+                "AgenticRobotGame.app");
+
+            return new BuildPlayerOptions
+            {
+                scenes = new[] { NativeSceneAssetPath },
+                locationPathName = appPath,
+                target = BuildTarget.StandaloneOSX,
+                options = BuildOptions.None,
+            };
+        }
+
+        [MenuItem("MicroDuck/Build macOS MVP")]
+        public static void BuildMacOS()
+        {
+            CreateAllSceneAssets();
+            ConfigureBuildSettings();
+            string architecture = RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+                ? "ARM64"
+                : "x64";
+            EditorUserBuildSettings.SetPlatformSettings(
+                "OSXUniversal",
+                "Architecture",
+                architecture);
+            string previousProductName = PlayerSettings.productName;
+            PlayerSettings.productName = "AgenticRobotGame";
+            try
+            {
+                BuildPlayerOptions options = CreateMacOSBuildOptions();
+                string outputDirectory = Path.GetDirectoryName(options.locationPathName);
+                if (string.IsNullOrEmpty(outputDirectory))
+                {
+                    throw new InvalidOperationException("macOS build output directory is empty.");
+                }
+
+                Directory.CreateDirectory(outputDirectory);
+                BuildReport report = BuildPipeline.BuildPlayer(options);
+                if (report.summary.result != BuildResult.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"macOS build failed with result {report.summary.result} "
+                        + $"and {report.summary.totalErrors} errors.");
+                }
+
+                Debug.Log(
+                    $"Built MicroDuck MVP for macOS at '{options.locationPathName}' "
+                    + $"({report.summary.totalSize} bytes)." );
+            }
+            finally
+            {
+                PlayerSettings.productName = previousProductName;
+            }
         }
 
         private static GameObject InstantiateRobot(

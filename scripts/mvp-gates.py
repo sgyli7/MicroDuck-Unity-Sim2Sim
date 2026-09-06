@@ -492,6 +492,56 @@ def _native_behavior(
     return 0
 
 
+def _smoke_checks(smoke: dict[str, Any]) -> dict[str, bool]:
+    return {
+        "schemaMatches": smoke.get("schemaVersion") == 1,
+        "smokePassed": smoke.get("passed") is True,
+        "nativeSceneLoaded": smoke.get("scene") == "MicroDuckNativeMvp",
+        "nativeVersionMatches": (
+            smoke.get("nativeVersion") == 3012000
+            and smoke.get("nativeVersionString") == "3.12.0"
+        ),
+        "backendMatches": smoke.get("backend")
+        == "MuJoCo 3.12 + Barracuda 3.0.1 CPU",
+        "policyTicked": isinstance(smoke.get("policyTicks"), int)
+        and smoke["policyTicks"] >= 1,
+        "tensorContractMatches": (
+            smoke.get("observationCount") == 61
+            and smoke.get("actionCount") == 14
+            and smoke.get("targetCount") == 14
+        ),
+        "allFinite": smoke.get("allFinite") is True,
+        "noFault": smoke.get("fault") == "",
+    }
+
+
+def _locked_native_binary(
+    upstream_lock: Path,
+    lock_key: str,
+) -> tuple[dict[str, Any], Path, str]:
+    if not upstream_lock.is_file():
+        raise FileNotFoundError(f"Upstream lock was not found: {upstream_lock}")
+    lock_document = json.loads(upstream_lock.read_text(encoding="utf-8"))
+    native_lock = lock_document.get("nativeBinaries", {}).get(lock_key)
+    if not isinstance(native_lock, dict):
+        raise ValueError(f"Upstream lock has no {lock_key} native binary contract")
+    expected_native_hash = str(native_lock.get("sha256", "")).lower()
+    if len(expected_native_hash) != 64 or any(
+        character not in "0123456789abcdef" for character in expected_native_hash
+    ):
+        raise ValueError("Locked MuJoCo native SHA-256 is invalid")
+    project_path = native_lock.get("projectPath")
+    if not isinstance(project_path, str) or not project_path:
+        raise ValueError("Locked MuJoCo native projectPath is invalid")
+    lock_root = upstream_lock.parent.resolve()
+    source_native = (lock_root / project_path).resolve()
+    if not source_native.is_relative_to(lock_root):
+        raise ValueError("Locked MuJoCo native projectPath escapes the project root")
+    if not source_native.is_file():
+        raise FileNotFoundError(f"Locked source MuJoCo native was not found: {source_native}")
+    return native_lock, source_native, expected_native_hash
+
+
 def _player_smoke(
     build_directory: Path,
     smoke_path: Path,
@@ -541,24 +591,7 @@ def _player_smoke(
     source_native_hash = _sha256(source_native)
     built_native_hash = _sha256(built_native)
     checks = {
-        "schemaMatches": smoke.get("schemaVersion") == 1,
-        "smokePassed": smoke.get("passed") is True,
-        "nativeSceneLoaded": smoke.get("scene") == "MicroDuckNativeMvp",
-        "nativeVersionMatches": (
-            smoke.get("nativeVersion") == 3012000
-            and smoke.get("nativeVersionString") == "3.12.0"
-        ),
-        "backendMatches": smoke.get("backend")
-        == "MuJoCo 3.12 + Barracuda 3.0.1 CPU",
-        "policyTicked": isinstance(smoke.get("policyTicks"), int)
-        and smoke["policyTicks"] >= 1,
-        "tensorContractMatches": (
-            smoke.get("observationCount") == 61
-            and smoke.get("actionCount") == 14
-            and smoke.get("targetCount") == 14
-        ),
-        "allFinite": smoke.get("allFinite") is True,
-        "noFault": smoke.get("fault") == "",
+        **_smoke_checks(smoke),
         "nativeSourceMatchesLock": source_native_hash == expected_native_hash,
         "builtNativeMatchesLock": built_native_hash == expected_native_hash,
         "builtNativeMatchesSource": built_native_hash == source_native_hash,
@@ -603,6 +636,87 @@ def _player_smoke(
     if not report["passed"]:
         failures = ", ".join(name for name, passed_ in checks.items() if not passed_)
         raise ValueError(f"Windows player smoke gate failed: {failures}")
+    return 0
+
+
+def _player_smoke_macos(
+    build_app: Path,
+    smoke_path: Path,
+    output: Path,
+    upstream_lock: Path,
+) -> int:
+    required_files = [
+        build_app / "Contents" / "MacOS" / "AgenticRobotGame",
+        build_app / "Contents" / "Frameworks" / "TuanjiePlayer.dylib",
+        build_app / "Contents" / "PlugIns" / "mujoco.dylib",
+        build_app / "Contents" / "Resources" / "Data" / "Managed" / "Mujoco.Runtime.dll",
+        build_app
+        / "Contents"
+        / "Resources"
+        / "Data"
+        / "Managed"
+        / "MicroDuck.MujocoRuntime.dll",
+    ]
+    for path in required_files:
+        if not path.is_file() or path.stat().st_size <= 0:
+            raise FileNotFoundError(f"Required macOS player file is missing or empty: {path}")
+    if not smoke_path.is_file():
+        raise FileNotFoundError(f"macOS player smoke report was not found: {smoke_path}")
+    smoke = json.loads(smoke_path.read_text(encoding="utf-8"))
+    native_lock, source_native, expected_native_hash = _locked_native_binary(
+        upstream_lock,
+        "mujocoMacOSUniversal2",
+    )
+    built_native = build_app / "Contents" / "PlugIns" / "mujoco.dylib"
+    source_native_hash = _sha256(source_native)
+    built_native_hash = _sha256(built_native)
+    checks = {
+        **_smoke_checks(smoke),
+        "nativeSourceMatchesLock": source_native_hash == expected_native_hash,
+        "builtNativeMatchesLock": built_native_hash == expected_native_hash,
+        "builtNativeMatchesSource": built_native_hash == source_native_hash,
+        "noWindowsNativeDll": not any(build_app.rglob("mujoco.dll")),
+    }
+    bundle_paths = sorted(
+        (path for path in build_app.rglob("*") if path.is_file()),
+        key=lambda path: str(path.relative_to(build_app)).casefold(),
+    )
+    files = [
+        {
+            "path": str(path.resolve()),
+            "relativePath": path.relative_to(build_app).as_posix(),
+            "bytes": path.stat().st_size,
+            "sha256": _sha256(path),
+        }
+        for path in bundle_paths
+    ]
+    report = {
+        "schemaVersion": 1,
+        "passed": all(checks.values()),
+        "buildApp": str(build_app.resolve()),
+        "smoke": str(smoke_path.resolve()),
+        "smokeSha256": hashlib.sha256(smoke_path.read_bytes()).hexdigest(),
+        "requiredFileCount": len(required_files),
+        "fileCount": len(files),
+        "files": files,
+        "nativeBinary": {
+            "version": native_lock.get("version"),
+            "distribution": native_lock.get("distribution"),
+            "url": native_lock.get("url"),
+            "archiveSha256": native_lock.get("archiveSha256"),
+            "archiveMember": native_lock.get("archiveMember"),
+            "expectedSha256": expected_native_hash,
+            "sourcePath": str(source_native),
+            "sourceSha256": source_native_hash,
+            "builtPath": str(built_native.resolve()),
+            "builtSha256": built_native_hash,
+        },
+        "checks": checks,
+    }
+    _write_json(output, report)
+    if not report["passed"]:
+        failures = ", ".join(name for name, passed_ in checks.items() if not passed_)
+        raise ValueError(f"macOS player smoke gate failed: {failures}")
     return 0
 
 
@@ -752,6 +866,11 @@ def _parser() -> argparse.ArgumentParser:
     player_smoke.add_argument("--input", required=True, type=Path)
     player_smoke.add_argument("--output", required=True, type=Path)
     player_smoke.add_argument("--upstream-lock", required=True, type=Path)
+    player_smoke_macos = subparsers.add_parser("player-smoke-macos")
+    player_smoke_macos.add_argument("--build-app", required=True, type=Path)
+    player_smoke_macos.add_argument("--input", required=True, type=Path)
+    player_smoke_macos.add_argument("--output", required=True, type=Path)
+    player_smoke_macos.add_argument("--upstream-lock", required=True, type=Path)
     trace = subparsers.add_parser("trace-parity")
     trace.add_argument("--trace", required=True, type=Path)
     trace.add_argument("--policy-directory", required=True, type=Path)
@@ -804,6 +923,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     if arguments.command == "player-smoke":
         return _player_smoke(
             arguments.build_directory.resolve(),
+            arguments.input.resolve(),
+            arguments.output.resolve(),
+            arguments.upstream_lock.resolve(),
+        )
+    if arguments.command == "player-smoke-macos":
+        return _player_smoke_macos(
+            arguments.build_app.resolve(),
             arguments.input.resolve(),
             arguments.output.resolve(),
             arguments.upstream_lock.resolve(),

@@ -177,21 +177,29 @@ namespace AgenticRobot.MicroDuck.Mujoco
                     14f);
             }
 
+            ApplyFreeFlyTranslation(
+                Axis(KeyCode.S, KeyCode.W),
+                Axis(KeyCode.A, KeyCode.D),
+                Axis(KeyCode.Q, KeyCode.E),
+                Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift));
+        }
+
+        public void ApplyFreeFlyTranslation(float forward, float right, float up, bool boost)
+        {
             Vector3 flatForward = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
             Vector3 flatRight = Vector3.ProjectOnPlane(transform.right, Vector3.up).normalized;
-            Vector3 movement = flatForward * Axis(KeyCode.S, KeyCode.W)
-                + flatRight * Axis(KeyCode.A, KeyCode.D)
-                + Vector3.up * Axis(KeyCode.Q, KeyCode.E);
-            float boost = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)
-                ? 2.5f
-                : 1f;
+            Vector3 movement = (flatForward * forward)
+                + (flatRight * right)
+                + (Vector3.up * up);
+            float speedBoost = boost ? 2.5f : 1f;
             if (movement.sqrMagnitude > 1f)
             {
                 movement.Normalize();
             }
+
             transform.position += movement
                 * freeSpeedMetersPerSecond
-                * boost
+                * speedBoost
                 * Time.unscaledDeltaTime;
         }
 

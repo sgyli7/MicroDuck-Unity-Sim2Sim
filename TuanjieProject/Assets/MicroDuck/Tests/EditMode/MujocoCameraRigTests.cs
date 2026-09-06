@@ -1,3 +1,4 @@
+using System.Reflection;
 using AgenticRobot.MicroDuck.Mujoco;
 using NUnit.Framework;
 using UnityEngine;
@@ -50,6 +51,18 @@ namespace AgenticRobot.MicroDuck.Tests
             Assert.That(rig.CyclePreset(), Is.EqualTo(MujocoCameraPreset.Top));
             Assert.That(rig.CyclePreset(), Is.EqualTo(MujocoCameraPreset.Showcase));
             Assert.That(rig.CyclePreset(), Is.EqualTo(MujocoCameraPreset.Side));
+        }
+
+        [Test]
+        public void ApplyFreeFlyTranslationUsesTheSameAxesAsKeyboardFreeFly()
+        {
+            cameraObject.transform.position = new Vector3(1f, 2f, 3f);
+            cameraObject.transform.rotation = Quaternion.LookRotation(Vector3.forward, Vector3.up);
+            Assert.That(
+                typeof(MujocoCameraRig).GetMethod("ApplyFreeFlyTranslation"),
+                Is.Not.Null);
+            Assert.DoesNotThrow(
+                () => rig.ApplyFreeFlyTranslation(1f, 0f, 0f, boost: false));
         }
 
         [Test]

@@ -19,6 +19,16 @@
       "archiveMember": "mujoco/mujoco.dll",
       "sha256": "bb001b847c5b2429facfa6827feb4b1d403d59b1fbd81bdb872d291e1f1856e6",
       "projectPath": "TuanjieProject/Assets/Plugins/x86_64/mujoco.dll"
+    },
+    "mujocoMacOSUniversal2": {
+      "version": "3.12.0",
+      "distribution": "official MuJoCo GitHub release DMG",
+      "url": "https://github.com/google-deepmind/mujoco/releases/download/3.12.0/mujoco-3.12.0-macos-universal2.dmg",
+      "archiveSha256": "8410882d724c3637b935dc0482b0de90efed44b17bbcfcb4a165ee46285a4865",
+      "archiveMember": "MuJoCo.app/Contents/Frameworks/mujoco.framework/Versions/Current/libmujoco.3.12.0.dylib",
+      "sha256": "848bd617513c22d1e2fb729ac4088c3698c5b2b751023f653c420f5ec84ce488",
+      "projectPath": "TuanjieProject/Assets/Plugins/macOS/mujoco.dylib",
+      "architectures": ["x86_64", "arm64"]
     }
   },
   "policies": [

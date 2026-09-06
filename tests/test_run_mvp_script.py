@@ -1,6 +1,14 @@
 import json
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="run-mvp.ps1 is the Windows entry point and needs powershell.exe",
+)
 
 
 ROOT = Path(__file__).parents[1]
