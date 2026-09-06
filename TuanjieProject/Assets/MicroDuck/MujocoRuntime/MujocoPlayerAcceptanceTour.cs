@@ -5,7 +5,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Mujoco;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -194,6 +193,7 @@ namespace AgenticRobot.MicroDuck.Mujoco
                 ApplyHeldInputs(holdingWalk, holdingFreeFly);
                 if (!string.IsNullOrWhiteSpace(framesDirectory))
                 {
+                    yield return new WaitForEndOfFrame();
                     string framePath = Path.Combine(
                         Path.GetFullPath(framesDirectory),
                         $"frame-{(frameIndex + 1):D4}.png");
@@ -204,6 +204,11 @@ namespace AgenticRobot.MicroDuck.Mujoco
                 {
                     yield return null;
                 }
+            }
+
+            for (int flush = 0; flush < FramesPerSecond; flush++)
+            {
+                yield return new WaitForEndOfFrame();
             }
 
             holdingWalk = false;
@@ -325,9 +330,8 @@ namespace AgenticRobot.MicroDuck.Mujoco
             controller.ResetActiveRobot();
             yield return WaitUntilHealthy(minimumTicks: 1);
 
-            MjBody trunk = FindTrunk(controller.ActiveModelRoot);
             Vector3 start = Horizontal(controller.RootPositionMeters);
-            Vector3 heading = ResolveHeading(trunk);
+            Vector3 heading = ResolveHeading(controller);
             controller.SetTwist(WalkingCommandForward, 0f, 0f);
             float startFixed = Time.fixedTime;
             float minUpright = controller.TrunkUpright;
@@ -515,29 +519,20 @@ namespace AgenticRobot.MicroDuck.Mujoco
             }
         }
 
-        private static MjBody FindTrunk(GameObject root)
+        private static Vector3 ResolveHeading(MujocoDemoController controller)
         {
-            if (root == null)
+            // MuJoCo +X maps to Tuanjie +Z. A zero-yaw reset therefore walks
+            // along Vector3.forward, matching NativeMujocoScenePlayModeTests'
+            // qpos axis-0 forward distance after the official basis conversion.
+            Vector3 heading = Quaternion.Euler(0f, controller.ResetYawDegrees, 0f)
+                * Vector3.forward;
+            heading = Horizontal(heading);
+            if (heading.sqrMagnitude < 1e-8f)
             {
-                return null;
+                heading = Vector3.forward;
             }
 
-            return root.GetComponentsInChildren<MjBody>(true)
-                .FirstOrDefault(body => body.name == "trunk_base");
-        }
-
-        private static Vector3 ResolveHeading(MjBody trunk)
-        {
-            if (trunk != null)
-            {
-                Vector3 heading = Vector3.ProjectOnPlane(trunk.transform.forward, Vector3.up);
-                if (heading.sqrMagnitude > 1e-8f)
-                {
-                    return heading.normalized;
-                }
-            }
-
-            return Vector3.forward;
+            return heading.normalized;
         }
 
         private static Vector3 Horizontal(Vector3 value)
