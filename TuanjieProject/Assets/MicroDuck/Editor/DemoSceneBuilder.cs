@@ -281,27 +281,32 @@ namespace AgenticRobot.MicroDuck.Editor
                 architecture);
             string previousProductName = PlayerSettings.productName;
             PlayerSettings.productName = "AgenticRobotGame";
-            BuildPlayerOptions options = CreateMacOSBuildOptions();
-            string outputDirectory = Path.GetDirectoryName(options.locationPathName);
-            if (string.IsNullOrEmpty(outputDirectory))
+            try
+            {
+                BuildPlayerOptions options = CreateMacOSBuildOptions();
+                string outputDirectory = Path.GetDirectoryName(options.locationPathName);
+                if (string.IsNullOrEmpty(outputDirectory))
+                {
+                    throw new InvalidOperationException("macOS build output directory is empty.");
+                }
+
+                Directory.CreateDirectory(outputDirectory);
+                BuildReport report = BuildPipeline.BuildPlayer(options);
+                if (report.summary.result != BuildResult.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"macOS build failed with result {report.summary.result} "
+                        + $"and {report.summary.totalErrors} errors.");
+                }
+
+                Debug.Log(
+                    $"Built MicroDuck MVP for macOS at '{options.locationPathName}' "
+                    + $"({report.summary.totalSize} bytes)." );
+            }
+            finally
             {
                 PlayerSettings.productName = previousProductName;
-                throw new InvalidOperationException("macOS build output directory is empty.");
             }
-
-            Directory.CreateDirectory(outputDirectory);
-            BuildReport report = BuildPipeline.BuildPlayer(options);
-            PlayerSettings.productName = previousProductName;
-            if (report.summary.result != BuildResult.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    $"macOS build failed with result {report.summary.result} "
-                    + $"and {report.summary.totalErrors} errors.");
-            }
-
-            Debug.Log(
-                $"Built MicroDuck MVP for macOS at '{options.locationPathName}' "
-                + $"({report.summary.totalSize} bytes)." );
         }
 
         private static GameObject InstantiateRobot(
