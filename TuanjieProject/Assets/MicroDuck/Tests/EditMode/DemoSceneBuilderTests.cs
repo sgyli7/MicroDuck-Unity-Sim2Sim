@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using AgenticRobot.MicroDuck.Editor;
 using AgenticRobot.MicroDuck.Mujoco;
 using Mujoco;
@@ -168,14 +169,25 @@ namespace AgenticRobot.MicroDuck.Tests
             Assert.That(Object.FindObjectsOfType<MujocoKeyboardPolicyInput>(true), Has.Length.EqualTo(1));
             Assert.That(Object.FindObjectsOfType<MujocoPolicyStatusOverlay>(true), Has.Length.EqualTo(1));
             Assert.That(Object.FindObjectsOfType<MujocoPlayerSmokeProbe>(true), Has.Length.EqualTo(1));
+            Assert.That(Object.FindObjectsOfType<MujocoPlayerAcceptanceTour>(true), Has.Length.EqualTo(1));
             Assert.That(Object.FindObjectsOfType<MicroDuckDemoController>(true), Is.Empty);
 
             MujocoTerrainNavigator navigator = Object.FindObjectOfType<MujocoTerrainNavigator>(true);
             MujocoCameraRig cameraRig = Object.FindObjectOfType<MujocoCameraRig>(true);
+            MujocoDemoController nativeController =
+                Object.FindObjectOfType<MujocoDemoController>(true);
+            MujocoPlayerAcceptanceTour tour =
+                Object.FindObjectOfType<MujocoPlayerAcceptanceTour>(true);
             MujocoPolicyStatusOverlay nativeOverlay =
                 Object.FindObjectOfType<MujocoPolicyStatusOverlay>(true);
             Assert.That(navigator, Is.Not.Null);
             Assert.That(cameraRig, Is.Not.Null);
+            Assert.That(ReadPrivateField<MujocoDemoController>(tour, "controller"),
+                Is.SameAs(nativeController));
+            Assert.That(ReadPrivateField<MujocoTerrainNavigator>(tour, "terrainNavigator"),
+                Is.SameAs(navigator));
+            Assert.That(ReadPrivateField<MujocoCameraRig>(tour, "cameraRig"),
+                Is.SameAs(cameraRig));
             Assert.That(nativeOverlay.Controller,
                 Is.SameAs(Object.FindObjectOfType<MujocoDemoController>(true)));
             Assert.That(nativeOverlay.Navigator, Is.SameAs(navigator));
@@ -263,6 +275,15 @@ namespace AgenticRobot.MicroDuck.Tests
             Assert.That(material.bounciness, Is.EqualTo(0f).Within(1e-7f));
             Assert.That(material.frictionCombine, Is.EqualTo(PhysicMaterialCombine.Maximum));
             Assert.That(material.bounceCombine, Is.EqualTo(PhysicMaterialCombine.Minimum));
+        }
+
+        private static T ReadPrivateField<T>(object target, string name)
+        {
+            FieldInfo field = target.GetType().GetField(
+                name,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null, name);
+            return (T)field.GetValue(target);
         }
     }
 }

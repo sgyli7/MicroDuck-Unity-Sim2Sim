@@ -110,6 +110,8 @@ namespace AgenticRobot.MicroDuck.Editor
             MujocoPolicyStatusOverlay overlay =
                 runtimeObject.AddComponent<MujocoPolicyStatusOverlay>();
             runtimeObject.AddComponent<MujocoPlayerSmokeProbe>().Configure(controller);
+            MujocoPlayerAcceptanceTour tour =
+                runtimeObject.AddComponent<MujocoPlayerAcceptanceTour>();
 
             Camera camera = CreateCamera();
             camera.fieldOfView = 35f;
@@ -119,6 +121,7 @@ namespace AgenticRobot.MicroDuck.Editor
             overlay.Configure(controller, navigator, cameraRig);
             runtimeObject.AddComponent<MujocoKeyboardPolicyInput>()
                 .Configure(controller, navigator, cameraRig);
+            tour.Configure(controller, navigator, cameraRig);
 
             if (!EditorSceneManager.SaveScene(nativeScene, NativeSceneAssetPath))
             {
