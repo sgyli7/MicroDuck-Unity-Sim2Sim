@@ -78,3 +78,51 @@ def test_dry_run_json_has_no_windows_paths_and_marks_platform_stages(
         rendered = json.dumps(item.get("commands", []))
         assert ".exe" not in rendered
         assert "\\" not in rendered
+
+
+def _load_runner():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("run_mvp_macos", SCRIPT)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_training_prep_does_not_pass_when_inventory_failed() -> None:
+    runner = _load_runner()
+    extra = runner.training_prep_stage_outcome(
+        {
+            "failed": ["hf sidecar ONNX verify failed"],
+            "blocked": [],
+            "skipped": [],
+            "completed": [],
+        }
+    )
+    assert extra["status"] == "failed"
+    assert "hf sidecar ONNX verify failed" in extra["reason"]
+
+
+def test_training_prep_passes_when_cuda_imports_are_skipped() -> None:
+    runner = _load_runner()
+    notes: dict[str, object] = {
+        "failed": [],
+        "blocked": ["blocked: needs wandb login", "blocked: no checkpoint"],
+        "skipped": [],
+        "completed": ["policy-audit.json reused"],
+        "imports": {
+            "mods": {
+                "mujoco": True,
+                "torch": True,
+                "warp": True,
+                "mjlab": "Expecting value: line 1 column 2 (char 1)",
+            }
+        },
+    }
+    runner._record_import_probe_outcomes(notes)
+    extra = runner.training_prep_stage_outcome(notes)
+    assert extra["status"] == "passed"
+    assert notes["failed"] == []
+    assert any(item.startswith("mjlab import:") for item in notes["skipped"])
+    assert "mujoco import ok" in notes["completed"]

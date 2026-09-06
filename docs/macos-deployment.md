@@ -70,7 +70,7 @@ open Builds/macOS/AgenticRobotGame.app
 | windows-build | `BuildWindows64` + player-smoke | **not-applicable**：Windows player 构建在 macOS 上不适用 |
 | macos-build | n/a | `BuildMacOS` + 无头 smoke + `player-smoke-macos` |
 | environment-acceptance | `run-visual-acceptance.ps1` SendInput | `macos-environment-acceptance`：in-player tour + `run-visual-acceptance-macos.py` |
-| training-prep | n/a（训练在 ppo-smoke） | 仅库存：策略哈希、HF 旁证、无 key 则 W&B blocked、无 `.pt` 则 checkpoint blocked |
+| training-prep | n/a（训练在 ppo-smoke） | 仅库存：策略哈希、HF 旁证、无 key 则 W&B blocked、无 `.pt` 则 checkpoint blocked；`warp`/`mjlab` 记 skipped（CUDA）。库存 `failed` 会让该 stage 失败，不再写成 passed |
 
 非 `passed` 的状态必须带 `reason`。平台不支持项记 `skipped` 或 `not-applicable`，绝不记 `passed`。`mvp-report.json` 的 `passed` 仅当没有任何 `failed`。
 

@@ -37,6 +37,7 @@ STAGES: tuple[str, ...] = (
 CUDA_SKIP_REASON = (
     "requires CUDA (microduck_rl/mjlab Warp); not available on Apple Silicon"
 )
+CUDA_IMPORT_MODULES = frozenset({"warp", "mjlab"})
 LOCKED_EDITOR = "2022.3.62t14"
 DEFAULT_TUANJIE = Path(
     "/Applications/Tuanjie/Hub/Editor/2022.3.62t14/Tuanjie.app/Contents/MacOS/Tuanjie"
@@ -1240,7 +1241,12 @@ def stage_training_prep(ctx: dict[str, Any]) -> dict[str, Any]:
     root: Path = ctx["root"]
     artifacts: Path = ctx["artifacts"]
     python = venv_python(root)
-    notes: dict[str, Any] = {"blocked": [], "completed": [], "failed": []}
+    notes: dict[str, Any] = {
+        "blocked": [],
+        "completed": [],
+        "skipped": [],
+        "failed": [],
+    }
     try:
         audit_path = artifacts / "policy-audit.json"
         policies: Any = []
@@ -1266,8 +1272,7 @@ def stage_training_prep(ctx: dict[str, Any]) -> dict[str, Any]:
         probe_python = rl_python if rl_python.is_file() else python
         notes["imports"] = _probe_upstream_imports(probe_python, root)
         notes["importPython"] = posix(probe_python)
-        if any(value is not True for value in notes["imports"].get("mods", {}).values()):
-            notes["failed"].append("upstream import probe recorded missing or timed-out modules")
+        _record_import_probe_outcomes(notes)
         hf_dir = root / ".cache" / "hf" / "microduck-rough-walk-e"
         env = with_local_bin()
         hf = shutil.which("hf", path=env["PATH"])
@@ -1342,7 +1347,37 @@ def stage_training_prep(ctx: dict[str, Any]) -> dict[str, Any]:
     except (OSError, ValueError, json.JSONDecodeError, RuntimeError) as exc:
         notes["failed"].append(str(exc))
     write_json(artifacts / "training" / "macos-training-prep.json", notes)
-    return {"trainingPrep": notes}
+    return training_prep_stage_outcome(notes)
+
+
+def _record_import_probe_outcomes(notes: dict[str, Any]) -> None:
+    notes.setdefault("skipped", [])
+    notes.setdefault("completed", [])
+    notes.setdefault("failed", [])
+    mods = notes.get("imports", {}).get("mods", {})
+    if not isinstance(mods, dict):
+        notes["failed"].append("upstream import probe did not return a module map")
+        return
+    for name, value in mods.items():
+        if value is True:
+            notes["completed"].append(f"{name} import ok")
+            continue
+        detail = value if isinstance(value, str) and value else repr(value)
+        if name in CUDA_IMPORT_MODULES:
+            notes["skipped"].append(f"{name} import: {detail}; {CUDA_SKIP_REASON}")
+            continue
+        notes["failed"].append(f"{name} import probe failed: {detail}")
+
+
+def training_prep_stage_outcome(notes: Mapping[str, Any]) -> dict[str, Any]:
+    failed = [item for item in notes.get("failed", []) if item]
+    extra: dict[str, Any] = {"trainingPrep": notes}
+    if failed:
+        extra["status"] = "failed"
+        extra["reason"] = "; ".join(str(item) for item in failed)
+        return extra
+    extra["status"] = "passed"
+    return extra
 
 
 HANDLERS = {
