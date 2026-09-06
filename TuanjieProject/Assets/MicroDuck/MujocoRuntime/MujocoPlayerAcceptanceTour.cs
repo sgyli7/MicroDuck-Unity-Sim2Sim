@@ -332,11 +332,11 @@ namespace AgenticRobot.MicroDuck.Mujoco
 
             Vector3 start = Horizontal(controller.RootPositionMeters);
             Vector3 heading = ResolveHeading(controller);
-            controller.SetTwist(WalkingCommandForward, 0f, 0f);
             float startFixed = Time.fixedTime;
             float minUpright = controller.TrunkUpright;
             while (Time.fixedTime - startFixed < WalkingDurationSeconds)
             {
+                controller.SetTwist(WalkingCommandForward, 0f, 0f);
                 minUpright = Mathf.Min(minUpright, controller.TrunkUpright);
                 yield return new WaitForFixedUpdate();
             }
@@ -521,15 +521,15 @@ namespace AgenticRobot.MicroDuck.Mujoco
 
         private static Vector3 ResolveHeading(MujocoDemoController controller)
         {
-            // MuJoCo +X maps to Tuanjie +Z. A zero-yaw reset therefore walks
-            // along Vector3.forward, matching NativeMujocoScenePlayModeTests'
-            // qpos axis-0 forward distance after the official basis conversion.
+            // Native walking measures qpos axis 0 (MuJoCo +X). The official
+            // MjEngineTool.UnityVector3 used by RootPositionMeters keeps that
+            // axis as Unity +X (see the overlay "position x=" readout).
             Vector3 heading = Quaternion.Euler(0f, controller.ResetYawDegrees, 0f)
-                * Vector3.forward;
+                * Vector3.right;
             heading = Horizontal(heading);
             if (heading.sqrMagnitude < 1e-8f)
             {
-                heading = Vector3.forward;
+                heading = Vector3.right;
             }
 
             return heading.normalized;
