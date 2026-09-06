@@ -269,6 +269,7 @@ def run_visual_acceptance(
     run_command: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     which: Callable[[str], str | None] = shutil.which,
 ) -> dict[str, Any]:
+    output_directory = output_directory.expanduser().resolve()
     binary = resolve_player_binary(player)
     ffmpeg = which("ffmpeg")
     if not ffmpeg:
@@ -276,17 +277,17 @@ def run_visual_acceptance(
 
     output_directory.mkdir(parents=True, exist_ok=True)
     session = datetime.now().strftime("%Y%m%d-%H%M%S")
-    session_directory = output_directory / session
-    frame_directory = session_directory / "frames"
+    session_directory = (output_directory / session).resolve()
+    frame_directory = (session_directory / "frames").resolve()
     session_directory.mkdir(parents=True, exist_ok=True)
     frame_directory.mkdir(parents=True, exist_ok=True)
-    log_path = session_directory / "player.log"
-    tour_report_path = session_directory / "tour-report.json"
-    video_path = session_directory / "microduck-interactive-acceptance.mp4"
+    log_path = (session_directory / "player.log").resolve()
+    tour_report_path = (session_directory / "tour-report.json").resolve()
+    video_path = (session_directory / "microduck-interactive-acceptance.mp4").resolve()
     command = player_command(binary, log_path, tour_report_path, frame_directory)
     process = popen(
         command,
-        cwd=str(binary.parent),
+        cwd=str(ROOT),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
