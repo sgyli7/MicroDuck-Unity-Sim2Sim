@@ -279,15 +279,19 @@ namespace AgenticRobot.MicroDuck.Editor
                 "OSXUniversal",
                 "Architecture",
                 architecture);
+            string previousProductName = PlayerSettings.productName;
+            PlayerSettings.productName = "AgenticRobotGame";
             BuildPlayerOptions options = CreateMacOSBuildOptions();
             string outputDirectory = Path.GetDirectoryName(options.locationPathName);
             if (string.IsNullOrEmpty(outputDirectory))
             {
+                PlayerSettings.productName = previousProductName;
                 throw new InvalidOperationException("macOS build output directory is empty.");
             }
 
             Directory.CreateDirectory(outputDirectory);
             BuildReport report = BuildPipeline.BuildPlayer(options);
+            PlayerSettings.productName = previousProductName;
             if (report.summary.result != BuildResult.Succeeded)
             {
                 throw new InvalidOperationException(
