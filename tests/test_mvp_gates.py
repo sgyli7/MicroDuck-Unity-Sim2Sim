@@ -347,6 +347,123 @@ def test_player_smoke_gate_rejects_native_dll_not_bound_to_the_locked_source(
         MVP_GATES._player_smoke(build, smoke, tmp_path / "bundle.json", lock)
 
 
+def _passing_smoke_payload() -> dict[str, object]:
+    return {
+        "schemaVersion": 1,
+        "passed": True,
+        "scene": "MicroDuckNativeMvp",
+        "nativeVersion": 3012000,
+        "nativeVersionString": "3.12.0",
+        "backend": "MuJoCo 3.12 + Barracuda 3.0.1 CPU",
+        "policyTicks": 3,
+        "observationCount": 61,
+        "actionCount": 14,
+        "targetCount": 14,
+        "allFinite": True,
+        "fault": "",
+    }
+
+
+def _write_macos_native_lock(root: Path, native_bytes: bytes) -> Path:
+    source = root / "TuanjieProject" / "Assets" / "Plugins" / "macOS" / "mujoco.dylib"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_bytes(native_bytes)
+    lock = root / "upstream.lock.json"
+    lock.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "nativeBinaries": {
+                    "mujocoMacOSUniversal2": {
+                        "version": "3.12.0",
+                        "distribution": "official MuJoCo GitHub release DMG",
+                        "url": "https://github.com/google-deepmind/mujoco/macos.dmg",
+                        "archiveSha256": "b" * 64,
+                        "archiveMember": "libmujoco.3.12.0.dylib",
+                        "sha256": MVP_GATES._sha256(source),
+                        "projectPath": "TuanjieProject/Assets/Plugins/macOS/mujoco.dylib",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    return lock
+
+
+def _write_macos_bundle(app: Path, *, dylib_bytes: bytes) -> None:
+    files = {
+        app / "Contents" / "MacOS" / "AgenticRobotGame": b"player",
+        app / "Contents" / "Frameworks" / "TuanjiePlayer.dylib": b"engine",
+        app / "Contents" / "PlugIns" / "mujoco.dylib": dylib_bytes,
+        app
+        / "Contents"
+        / "Resources"
+        / "Data"
+        / "Managed"
+        / "Mujoco.Runtime.dll": b"bridge",
+        app
+        / "Contents"
+        / "Resources"
+        / "Data"
+        / "Managed"
+        / "MicroDuck.MujocoRuntime.dll": b"runtime",
+    }
+    for path, contents in files.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(contents)
+
+
+def test_macos_player_smoke_gate_requires_native_policy_tick_and_complete_bundle(
+    tmp_path: Path,
+) -> None:
+    app = tmp_path / "AgenticRobotGame.app"
+    _write_macos_bundle(app, dylib_bytes=b"trusted-native")
+    smoke = tmp_path / "smoke.json"
+    smoke.write_text(json.dumps(_passing_smoke_payload()), encoding="utf-8")
+    lock = _write_macos_native_lock(tmp_path, b"trusted-native")
+
+    result = MVP_GATES._player_smoke_macos(
+        app, smoke, tmp_path / "bundle.json", lock
+    )
+
+    assert result == 0
+    report = json.loads((tmp_path / "bundle.json").read_text(encoding="utf-8"))
+    assert report["passed"] is True
+    assert report["fileCount"] == 5
+    assert all(len(item["sha256"]) == 64 for item in report["files"])
+    assert report["checks"]["noWindowsNativeDll"] is True
+
+
+def test_macos_player_smoke_gate_rejects_an_app_without_native_dylib(
+    tmp_path: Path,
+) -> None:
+    app = tmp_path / "AgenticRobotGame.app"
+    (app / "Contents" / "MacOS").mkdir(parents=True)
+    (app / "Contents" / "MacOS" / "AgenticRobotGame").write_bytes(b"player")
+    (app / "Contents" / "Frameworks").mkdir(parents=True)
+    (app / "Contents" / "Frameworks" / "TuanjiePlayer.dylib").write_bytes(b"engine")
+    smoke = tmp_path / "smoke.json"
+    smoke.write_text(json.dumps(_passing_smoke_payload()), encoding="utf-8")
+    lock = _write_macos_native_lock(tmp_path, b"trusted-native")
+
+    with pytest.raises(FileNotFoundError, match="mujoco.dylib"):
+        MVP_GATES._player_smoke_macos(app, smoke, tmp_path / "bundle.json", lock)
+
+
+def test_macos_player_smoke_gate_rejects_native_dylib_not_bound_to_the_locked_source(
+    tmp_path: Path,
+) -> None:
+    app = tmp_path / "AgenticRobotGame.app"
+    _write_macos_bundle(app, dylib_bytes=b"tampered-native")
+    smoke = tmp_path / "smoke.json"
+    smoke.write_text(json.dumps(_passing_smoke_payload()), encoding="utf-8")
+    lock = _write_macos_native_lock(tmp_path, b"trusted-native")
+
+    with pytest.raises(ValueError, match="builtNativeMatchesLock"):
+        MVP_GATES._player_smoke_macos(app, smoke, tmp_path / "bundle.json", lock)
+
+
 def test_onnx_attestation_binds_export_bytes_to_checkpoint_bytes(tmp_path: Path) -> None:
     checkpoint = tmp_path / "model_4.pt"
     checkpoint.write_bytes(b"checkpoint-v1")
