@@ -1,3 +1,6 @@
+import hashlib
+import json
+import string
 from pathlib import Path
 
 import pytest
@@ -37,4 +40,24 @@ def test_repository_lock_rejects_non_sha_commit(tmp_path: Path) -> None:
 
     with pytest.raises(LockFileError, match="40-character commit SHA"):
         load_upstream_lock(invalid)
+
+
+def test_native_binaries_pin_windows_and_macos_hashes_to_existing_files() -> None:
+    lock_path = ROOT / "upstream.lock.json"
+    document = json.loads(lock_path.read_text(encoding="utf-8"))
+    natives = document["nativeBinaries"]
+
+    assert set(natives) >= {"mujocoWindowsX64", "mujocoMacOSUniversal2"}
+    load_upstream_lock(lock_path)
+
+    for name in ("mujocoWindowsX64", "mujocoMacOSUniversal2"):
+        entry = natives[name]
+        digest = entry["sha256"]
+        assert isinstance(digest, str)
+        assert len(digest) == 64
+        assert all(character in string.hexdigits for character in digest)
+        project_file = ROOT / entry["projectPath"]
+        assert project_file.is_file(), project_file
+        actual = hashlib.sha256(project_file.read_bytes()).hexdigest()
+        assert actual == digest.lower()
 
