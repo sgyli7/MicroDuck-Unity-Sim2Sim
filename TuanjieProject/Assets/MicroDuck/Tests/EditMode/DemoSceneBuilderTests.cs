@@ -114,6 +114,25 @@ namespace AgenticRobot.MicroDuck.Tests
         }
 
         [Test]
+        public void CreatesMacOSBuildOptionsAtTheRepositoryBuildPath()
+        {
+            DemoSceneBuilder.CreateSceneAsset();
+            DemoSceneBuilder.CreateNativeSceneAsset();
+            DemoSceneBuilder.ConfigureBuildSettings();
+
+            BuildPlayerOptions options = DemoSceneBuilder.CreateMacOSBuildOptions();
+
+            Assert.That(options.target, Is.EqualTo(BuildTarget.StandaloneOSX));
+            Assert.That(
+                options.scenes,
+                Is.EqualTo(new[] { DemoSceneBuilder.NativeSceneAssetPath }));
+            Assert.That(Path.IsPathRooted(options.locationPathName), Is.True);
+            Assert.That(
+                options.locationPathName.Replace('\\', '/'),
+                Does.EndWith("/Builds/macOS/AgenticRobotGame.app"));
+        }
+
+        [Test]
         public void PersistsTheTwoHundredHertzPhysicsStepWhenCreatingTheScene()
         {
             Time.fixedDeltaTime = 0.02f;
