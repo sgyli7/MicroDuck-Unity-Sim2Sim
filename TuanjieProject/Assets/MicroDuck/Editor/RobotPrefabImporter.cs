@@ -457,6 +457,14 @@ namespace AgenticRobot.MicroDuck.Editor
                 ? Mathf.Max(Mathf.Abs(servo.forceRange[0]), Mathf.Abs(servo.forceRange[1]))
                 : float.MaxValue;
             articulation.xDrive = drive;
+            if (servo != null && joint.armature != null && joint.armature.Length > 0)
+            {
+                var rotor = articulation.gameObject.AddComponent<RotorInertiaDrive>();
+                rotor.Configure(articulation, joint.armature[0], damping);
+                // Isolated joint response improved, but whole-policy regression did not.
+                // Keep the measured experiment opt-in; never ship it as a silent correction.
+                rotor.enabled = false;
+            }
         }
 
         /// <summary>

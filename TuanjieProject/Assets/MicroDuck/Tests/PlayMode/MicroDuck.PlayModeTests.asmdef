@@ -3,8 +3,6 @@
   "rootNamespace": "AgenticRobot.MicroDuck.Tests",
   "references": [
     "MicroDuck.Runtime",
-    "MicroDuck.MujocoRuntime",
-    "Mujoco.Runtime",
     "Unity.Barracuda"
   ],
   "includePlatforms": [],

@@ -15,11 +15,11 @@ namespace AgenticRobot.MicroDuck
             {
                 if (controller == null)
                 {
-                    return "MicroDuck MVP | Controller not configured";
+                    return "PHYSX GAME | Controller not configured";
                 }
 
                 string health = controller.IsHealthy ? "Ready" : controller.Fault;
-                return $"MicroDuck MVP | [{controller.ActivePolicySlot}] {controller.ActivePolicyName}"
+                return $"PHYSX GAME | [{controller.ActivePolicySlot}] {controller.ActivePolicyName}"
                     + $" | {controller.BackendName} | ticks {controller.PolicyTicks} | {health}";
             }
         }
@@ -31,7 +31,7 @@ namespace AgenticRobot.MicroDuck
 
         private void OnGUI()
         {
-            const string controls = "1-9 policy | WASD move | QE yaw | Space skill | R reset";
+            const string controls = "1-9 policy | WASD move | QE yaw | Space skill | R reset | T terrain | Tab camera | C view | F focus";
             GUI.Box(new Rect(12f, 12f, Mathf.Max(500f, Screen.width - 24f), 58f), string.Empty);
             GUI.Label(new Rect(24f, 20f, Screen.width - 48f, 20f), StatusText);
             GUI.Label(new Rect(24f, 42f, Screen.width - 48f, 20f), controls);

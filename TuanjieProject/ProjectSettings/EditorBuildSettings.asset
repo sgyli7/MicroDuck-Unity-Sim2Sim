@@ -6,11 +6,8 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/MicroDuck/Generated/Scenes/MicroDuckNativeMvp.unity
-    guid: 3bb69a3c57605304fb3936655e3227e0
-  - enabled: 1
     path: Assets/MicroDuck/Generated/Scenes/MicroDuckMvp.unity
-    guid: 8b1c76756343e1640929a6359be28fb0
+    guid: 9d3369cff103ba04ebe844e6ee61eec6
   m_BuildProfiles: []
   m_configObjects: {}
   m_SlimFeaturesWeixinMiniGame:

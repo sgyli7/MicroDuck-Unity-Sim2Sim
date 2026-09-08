@@ -301,8 +301,6 @@ namespace AgenticRobot.MicroDuck.Tests
         }
 
         [UnityTest]
-        [Explicit(
-            "PhysX armature calibration diagnostic only; authoritative dynamics run in native MuJoCo.")]
         public IEnumerator AnkleStepResponseMatchesTheMuJoCoArmatureDynamics()
         {
             yield return SceneManager.LoadSceneAsync("MicroDuckMvp", LoadSceneMode.Single);
@@ -336,6 +334,7 @@ namespace AgenticRobot.MicroDuck.Tests
                 int nextSample = 0;
                 for (int step = 1; step <= 80; step++)
                 {
+                    controller.ActiveRig.PreparePhysicsStep(0.005f);
                     Physics.Simulate(0.005f);
                     if (step == sampleSteps[nextSample])
                     {
@@ -385,8 +384,6 @@ namespace AgenticRobot.MicroDuck.Tests
         }
 
         [UnityTest]
-        [Explicit(
-            "PhysX passive-hold calibration diagnostic only; authoritative dynamics run in native MuJoCo.")]
         public IEnumerator DiagnosticHomeDrivesHoldTheRobotWithoutPolicyForTwoSeconds()
         {
             yield return SceneManager.LoadSceneAsync("MicroDuckMvp", LoadSceneMode.Single);
@@ -422,6 +419,7 @@ namespace AgenticRobot.MicroDuck.Tests
             {
                 for (int step = 0; step < 400; step++)
                 {
+                    controller.ActiveRig.PreparePhysicsStep(0.005f);
                     Physics.Simulate(0.005f);
                 }
             }

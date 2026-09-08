@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using AgenticRobot.MicroDuck.Mujoco;
-using Mujoco;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -50,7 +48,7 @@ namespace AgenticRobot.MicroDuck.Editor
             var environment = new GameObject(EnvironmentRootName);
             var terrainRoot = new GameObject("Terrain");
             terrainRoot.transform.SetParent(environment.transform, false);
-            foreach (TerrainModuleDefinition module in MujocoTerrainCatalog.Modules)
+            foreach (TerrainModuleDefinition module in TerrainCatalog.Modules)
             {
                 BuildTerrainModule(terrainRoot.transform, module);
             }
@@ -111,37 +109,24 @@ namespace AgenticRobot.MicroDuck.Editor
                 return;
             }
 
-            MjGeom geom = item.AddComponent<MjGeom>();
-            geom.Mass = 0f;
-            geom.Density = 0f;
+            Collider physicalCollider;
             switch (primitive.Kind)
             {
                 case TerrainPrimitiveKind.Box:
-                    geom.ShapeType = MjShapeComponent.ShapeTypes.Box;
-                    geom.Box.Extents = Vector3.one * 0.5f;
+                    physicalCollider = item.AddComponent<BoxCollider>();
                     break;
                 case TerrainPrimitiveKind.Ellipsoid:
-                    geom.ShapeType = MjShapeComponent.ShapeTypes.Ellipsoid;
-                    geom.Ellipsoid.Radiuses = Vector3.one * 0.5f;
-                    break;
                 case TerrainPrimitiveKind.Cylinder:
-                    geom.ShapeType = MjShapeComponent.ShapeTypes.Cylinder;
-                    geom.Cylinder.Radius = 0.5f;
-                    geom.Cylinder.HalfHeight = 0.5f;
+                    var meshCollider = item.AddComponent<MeshCollider>();
+                    meshCollider.sharedMesh = item.GetComponent<MeshFilter>().sharedMesh;
+                    physicalCollider = meshCollider;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
 
-            MjGeomSettings settings = MjGeomSettings.Default;
-            settings.Friction.Sliding = 1f;
-            settings.Friction.Torsional = 0.005f;
-            settings.Friction.Rolling = 0.0001f;
-            if (moduleId == "upstream_random_grid")
-            {
-                settings.Solver.SolRef.TimeConst = 0.04f;
-            }
-            geom.Settings = settings;
+            physicalCollider.contactOffset = RobotPrefabImporter.ContactOffsetMeters;
+            physicalCollider.sharedMaterial = MuJoCoPhysicsMaterialAssets.GetOrCreateRobotAndFloor();
         }
 
         private static void ConfigureAtmosphere()

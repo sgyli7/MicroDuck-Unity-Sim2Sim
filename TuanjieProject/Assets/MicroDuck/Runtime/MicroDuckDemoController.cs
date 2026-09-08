@@ -50,6 +50,42 @@ namespace AgenticRobot.MicroDuck
         public MicroDuckRig ActiveRig => activeRig;
         public MicroDuckSkillBall SkillBall => skillBall;
 
+        public float[] Observe(float nowSeconds)
+        {
+            activeRig.ReadPolicyState(jointPosition, jointVelocity,
+                out Vector3 angularVelocity, out Vector3 gravity);
+            return controlLoop.Observe(angularVelocity, gravity, jointPosition, jointVelocity, nowSeconds);
+        }
+
+        public void UsePolicyRuntime(IPolicyRuntime runtime)
+        {
+            controlLoop?.Dispose();
+            controlLoop = new MicroDuckControlLoop(runtime, commands, HomePositionRad,
+                PolicyCatalog.GetBySlot(ActivePolicySlot).ActionScale);
+        }
+
+        public MicroDuckDemoController CreateReplica(UnityEngine.SceneManagement.Scene scene)
+        {
+            var legged = Instantiate(leggedRig);
+            var roller = Instantiate(rollerRig);
+            var ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            ground.name = "PhysX Training Floor";
+            ground.transform.position = new Vector3(0f, -0.05f, 0f);
+            ground.transform.localScale = new Vector3(8f, 0.1f, 8f);
+            var groundCollider = ground.GetComponent<Collider>();
+            groundCollider.sharedMaterial = skillBall.FloorCollider.sharedMaterial;
+            groundCollider.contactOffset = 0.001f;
+            var ball = Instantiate(skillBall);
+            ball.Configure(ball.Body, ball.Collider, groundCollider);
+            var host = new GameObject("PhysX Training Controller");
+            var replica = host.AddComponent<MicroDuckDemoController>();
+            replica.enabled = false;
+            replica.Configure(legged, roller, policies, ball);
+            foreach (var root in new[] { legged.gameObject, roller.gameObject, ground, ball.gameObject, host })
+                UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(root, scene);
+            return replica;
+        }
+
         public void Configure(
             MicroDuckRig legged,
             MicroDuckRig roller,
@@ -194,6 +230,7 @@ namespace AgenticRobot.MicroDuck
             ActivePolicySlot = slot;
             ActivePolicyName = entry.FileName;
             Fault = string.Empty;
+            ConfigureSkillBall(entry);
             return true;
         }
 
@@ -224,6 +261,10 @@ namespace AgenticRobot.MicroDuck
 
         public void ResetActiveRig()
         {
+            controlLoop?.Reset();
+            commands.Reset();
+            physicsStep = 0;
+            PolicyTicks = 0;
             activeRig?.ResetPose(HomePositionRad);
             if (activeRig != null && ActivePolicySlot > 0)
             {
@@ -312,7 +353,9 @@ namespace AgenticRobot.MicroDuck
 
             if (entry.Role == PolicyRole.KickLeft || entry.Role == PolicyRole.KickRight)
             {
-                skillBall.ResetForKick(activeRig.RootBody.transform, entry.Role);
+                float spawnHeight = activeRig.Variant == RobotVariant.Roller ? 0.1385f : 0.125f;
+                skillBall.ResetForKick(activeRig.RootBody.transform, entry.Role,
+                    activeRig.ResetPosition.y - spawnHeight);
             }
             else
             {

@@ -28,13 +28,19 @@ namespace AgenticRobot.MicroDuck
             {
                 if (Input.GetKeyDown(KeyCode.Alpha0 + slot))
                 {
-                    controller.SelectPolicy(slot);
+                    if (controller.ActiveRig != null &&
+                        PolicyCatalog.GetBySlot(slot).RobotVariant == controller.ActiveRig.Variant)
+                        controller.HotSwapPolicy(slot);
+                    else
+                        controller.SelectPolicy(slot);
                 }
             }
 
-            float forward = Axis(KeyCode.S, KeyCode.W) * forwardSpeed;
-            float left = Axis(KeyCode.D, KeyCode.A) * lateralSpeed;
-            float yaw = Axis(KeyCode.E, KeyCode.Q) * yawRate;
+            var cameraRig = Camera.main == null ? null : Camera.main.GetComponent<MicroDuckCameraRig>();
+            bool cameraOwnsNavigation = cameraRig != null && cameraRig.OwnsNavigationInput;
+            float forward = cameraOwnsNavigation ? 0f : Axis(KeyCode.S, KeyCode.W) * forwardSpeed;
+            float left = cameraOwnsNavigation ? 0f : Axis(KeyCode.D, KeyCode.A) * lateralSpeed;
+            float yaw = cameraOwnsNavigation ? 0f : Axis(KeyCode.E, KeyCode.Q) * yawRate;
             controller.SetTwist(forward, left, yaw);
 
             float neckPitch = Axis(KeyCode.K, KeyCode.I) * headRange;
@@ -45,7 +51,7 @@ namespace AgenticRobot.MicroDuck
 
             float height = Axis(KeyCode.PageDown, KeyCode.PageUp) * bodyHeightRange;
             float roll = Axis(KeyCode.X, KeyCode.Z) * bodyAngleRange;
-            float pitch = Axis(KeyCode.V, KeyCode.C) * bodyAngleRange;
+            float pitch = Axis(KeyCode.V, KeyCode.B) * bodyAngleRange;
             controller.SetBody(height, roll, pitch);
 
             if (Input.GetKeyDown(KeyCode.Space))

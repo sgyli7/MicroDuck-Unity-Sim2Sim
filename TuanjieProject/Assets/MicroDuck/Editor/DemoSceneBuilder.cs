@@ -1,8 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using AgenticRobot.MicroDuck.Mujoco;
-using Mujoco;
 using Unity.Barracuda;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
@@ -15,13 +13,10 @@ namespace AgenticRobot.MicroDuck.Editor
     {
         public const string SceneAssetPath =
             "Assets/MicroDuck/Generated/Scenes/MicroDuckMvp.unity";
-        public const string NativeSceneAssetPath =
-            "Assets/MicroDuck/Generated/Scenes/MicroDuckNativeMvp.unity";
 
         public static string CreateAllSceneAssets()
         {
-            CreateSceneAsset();
-            return CreateNativeSceneAsset();
+            return CreateSceneAsset();
         }
 
         [MenuItem("MicroDuck/Create MVP Demo Scene")]
@@ -47,8 +42,11 @@ namespace AgenticRobot.MicroDuck.Editor
 
             MicroDuckRig leggedRig = RequireRig(leggedObject, RobotVariant.Legged);
             MicroDuckRig rollerRig = RequireRig(rollerObject, RobotVariant.Roller);
-            Collider floorCollider = CreateFloor(
-                MuJoCoPhysicsMaterialAssets.GetOrCreateRobotAndFloor());
+            GameObject world = AlpineEnvironmentBuilder.Build();
+            Collider floorCollider = world.transform
+                .Find("Terrain/flat_plaza/terrain_flat_plaza_plaza").GetComponent<Collider>();
+            floorCollider.name = "Floor";
+            floorCollider.transform.SetParent(null, true);
             MicroDuckSkillBall skillBall = CreateSkillBall(
                 floorCollider,
                 MuJoCoPhysicsMaterialAssets.GetOrCreateBall());
@@ -59,8 +57,12 @@ namespace AgenticRobot.MicroDuck.Editor
             runtimeObject.AddComponent<KeyboardPolicyInput>().Configure(controller);
             runtimeObject.AddComponent<PolicyStatusOverlay>().Configure(controller);
 
-            CreateLight();
-            CreateCamera();
+            Camera camera = CreateCamera();
+            camera.fieldOfView = 35f;
+            camera.nearClipPlane = 0.01f;
+            camera.gameObject.AddComponent<MicroDuckCameraRig>().Configure(controller);
+            runtimeObject.AddComponent<PhysXTerrainNavigator>().Configure(controller);
+            runtimeObject.AddComponent<PhysicsIdentity>();
 
             if (!EditorSceneManager.SaveScene(scene, SceneAssetPath))
             {
@@ -69,64 +71,6 @@ namespace AgenticRobot.MicroDuck.Editor
 
             AssetDatabase.SaveAssets();
             return SceneAssetPath;
-        }
-
-        [MenuItem("MicroDuck/Create Native MuJoCo MVP Scene")]
-        public static string CreateNativeSceneAsset()
-        {
-            ConfigureSimulationTiming();
-            OfficialMujocoPrefabImporter.ImportAll();
-            EnsureAssetFolder(Path.GetDirectoryName(NativeSceneAssetPath)?.Replace('\\', '/'));
-
-            var nativeScene = EditorSceneManager.NewScene(
-                NewSceneSetup.EmptyScene,
-                NewSceneMode.Single);
-
-            // MjComponent.OnEnable resolves the official MjScene singleton. Keep
-            // this root first in the serialized scene so its Awake runs before any
-            // imported body is enabled when the scene is loaded in Play Mode.
-            var runtimeObject = new GameObject("MicroDuck Native Runtime");
-            MjScene mujocoScene = runtimeObject.AddComponent<MicroDuckMjScene>();
-            MujocoDemoController controller = runtimeObject.AddComponent<MujocoDemoController>();
-            MjGlobalSettings globalSettings = runtimeObject.AddComponent<MjGlobalSettings>();
-            globalSettings.UseRawGameObjectNames = true;
-
-            AlpineEnvironmentBuilder.Build();
-
-            GameObject leggedWithBall = InstantiateMujocoModel(
-                OfficialMujocoPrefabImporter.BallPrefabAssetPath,
-                active: true);
-            GameObject roller = InstantiateMujocoModel(
-                OfficialMujocoPrefabImporter.RollerPrefabAssetPath,
-                active: false);
-            DisableImportedFloor(leggedWithBall);
-            DisableImportedFloor(roller);
-
-            controller.Configure(mujocoScene, leggedWithBall, roller, LoadPolicyBindings());
-            MujocoTerrainNavigator navigator =
-                runtimeObject.AddComponent<MujocoTerrainNavigator>();
-            navigator.Configure(controller);
-            MujocoPolicyStatusOverlay overlay =
-                runtimeObject.AddComponent<MujocoPolicyStatusOverlay>();
-            runtimeObject.AddComponent<MujocoPlayerSmokeProbe>().Configure(controller);
-
-            Camera camera = CreateCamera();
-            camera.fieldOfView = 35f;
-            camera.nearClipPlane = 0.03f;
-            MujocoCameraRig cameraRig = camera.gameObject.AddComponent<MujocoCameraRig>();
-            cameraRig.Configure(controller);
-            overlay.Configure(controller, navigator, cameraRig);
-            runtimeObject.AddComponent<MujocoKeyboardPolicyInput>()
-                .Configure(controller, navigator, cameraRig);
-
-            if (!EditorSceneManager.SaveScene(nativeScene, NativeSceneAssetPath))
-            {
-                throw new InvalidOperationException(
-                    $"Could not save native MuJoCo MVP scene at '{NativeSceneAssetPath}'.");
-            }
-
-            AssetDatabase.SaveAssets();
-            return NativeSceneAssetPath;
         }
 
         private static void ConfigureSimulationTiming()
@@ -182,12 +126,6 @@ namespace AgenticRobot.MicroDuck.Editor
 
         public static void ConfigureBuildSettings()
         {
-            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(NativeSceneAssetPath) == null)
-            {
-                throw new FileNotFoundException(
-                    $"Native MuJoCo MVP scene was not found at '{NativeSceneAssetPath}'.",
-                    NativeSceneAssetPath);
-            }
             if (AssetDatabase.LoadAssetAtPath<SceneAsset>(SceneAssetPath) == null)
             {
                 throw new FileNotFoundException(
@@ -197,7 +135,6 @@ namespace AgenticRobot.MicroDuck.Editor
 
             EditorBuildSettings.scenes = new[]
             {
-                new EditorBuildSettingsScene(NativeSceneAssetPath, true),
                 new EditorBuildSettingsScene(SceneAssetPath, true),
             };
         }
@@ -214,7 +151,7 @@ namespace AgenticRobot.MicroDuck.Editor
 
             return new BuildPlayerOptions
             {
-                scenes = new[] { NativeSceneAssetPath },
+                scenes = new[] { SceneAssetPath },
                 locationPathName = executablePath,
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.None,
@@ -276,40 +213,6 @@ namespace AgenticRobot.MicroDuck.Editor
             float heightCorrection = rootHeightMeters - rig.RootBody.transform.position.y;
             instance.transform.position += Vector3.up * heightCorrection;
             return instance;
-        }
-
-        private static GameObject InstantiateMujocoModel(string assetPath, bool active)
-        {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
-            if (prefab == null)
-            {
-                throw new FileNotFoundException(
-                    $"Official MuJoCo prefab was not found at '{assetPath}'.",
-                    assetPath);
-            }
-
-            var instance = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
-            if (instance == null)
-            {
-                throw new InvalidOperationException(
-                    $"Could not instantiate official MuJoCo prefab '{assetPath}'.");
-            }
-
-            instance.name = prefab.name;
-            instance.SetActive(active);
-            return instance;
-        }
-
-        private static void DisableImportedFloor(GameObject modelRoot)
-        {
-            foreach (MjGeom geom in modelRoot.GetComponentsInChildren<MjGeom>(includeInactive: true))
-            {
-                if (geom.ShapeType == MjShapeComponent.ShapeTypes.Plane
-                    || string.Equals(geom.name, "floor", StringComparison.OrdinalIgnoreCase))
-                {
-                    geom.gameObject.SetActive(false);
-                }
-            }
         }
 
         private static MicroDuckRig RequireRig(GameObject robot, RobotVariant expectedVariant)

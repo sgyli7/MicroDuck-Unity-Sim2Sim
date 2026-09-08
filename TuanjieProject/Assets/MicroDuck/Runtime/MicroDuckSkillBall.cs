@@ -38,6 +38,7 @@ namespace AgenticRobot.MicroDuck
         }
 
         public Vector3 Position => Body.position;
+        public Collider FloorCollider => floorCollider;
         public Vector3 Velocity => Body.velocity;
         public Vector3 AngularVelocity => Body.angularVelocity;
         public bool HasNonFloorContact { get; private set; }

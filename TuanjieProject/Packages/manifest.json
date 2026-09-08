@@ -2,7 +2,6 @@
   "dependencies": {
     "cn.tuanjie.codely.bridge": "1.0.78",
     "com.unity.barracuda": "https://github.com/Unity-Technologies/barracuda-release.git#eefb8cb01e6c6a3a9f839e93bd5d0338f0b5a2f5",
-    "org.mujoco": "https://github.com/google-deepmind/mujoco.git?path=/unity#13827e9ee56f097f57acf69ae52b078f9839682d",
     "com.unity.test-framework": "1.1.33",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",

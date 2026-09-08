@@ -24,9 +24,6 @@ namespace AgenticRobot.MicroDuck.Tests
             new Vector3(-0.00809334f, 0f, -0.0777383f);
 
         [UnityTest]
-        [Explicit(
-            "PhysX calibration diagnostic only; authoritative MicroDuck policy "
-            + "acceptance runs against native MuJoCo.")]
         public IEnumerator OfficialPoliciesMeetMuJoCoDerivedSustainedAndCompoundBehaviorContracts()
         {
             yield return SceneManager.LoadSceneAsync("MicroDuckMvp", LoadSceneMode.Single);
@@ -616,6 +613,7 @@ namespace AgenticRobot.MicroDuck.Tests
                         TickNow();
                     }
 
+                    controller.ActiveRig.PreparePhysicsStep(TimestepSeconds);
                     Physics.Simulate(TimestepSeconds);
                     physicsStep++;
                     CurrentTime = physicsStep * TimestepSeconds;

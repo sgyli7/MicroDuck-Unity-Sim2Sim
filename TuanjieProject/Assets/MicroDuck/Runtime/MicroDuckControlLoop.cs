@@ -81,6 +81,16 @@ namespace AgenticRobot.MicroDuck
         public float[] LastRawAction => (float[])rawAction.Clone();
         public float[] LastCommand => (float[])command.Clone();
 
+        public float[] Observe(Vector3 angularVelocity, Vector3 gravity,
+            float[] positions, float[] velocities, float nowSeconds)
+        {
+            if (disposed) throw new ObjectDisposedException(nameof(MicroDuckControlLoop));
+            commands.BuildCommand(nowSeconds, command);
+            PolicyObservationBuilder.Build(angularVelocity, gravity, positions, velocities,
+                homePositionRad, previousAction, command, observation);
+            return LastObservation;
+        }
+
         public MicroDuckControlLoopContinuation CaptureContinuation()
         {
             if (disposed)

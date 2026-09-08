@@ -1,18 +1,16 @@
 {
   "name": "MicroDuck.EditModeTests",
   "rootNamespace": "AgenticRobot.MicroDuck.Tests",
-    "references": [
-        "MicroDuck.Runtime",
-        "MicroDuck.MujocoRuntime",
-        "MicroDuck.Editor",
-        "Unity.Barracuda",
-        "Mujoco.Runtime"
+  "references": [
+    "MicroDuck.Runtime",
+    "MicroDuck.Editor",
+    "Unity.Barracuda"
   ],
   "includePlatforms": [
     "Editor"
   ],
   "excludePlatforms": [],
-    "allowUnsafeCode": true,
+  "allowUnsafeCode": true,
   "overrideReferences": false,
   "precompiledReferences": [],
   "autoReferenced": false,

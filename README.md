@@ -1,15 +1,20 @@
 # MicroDuck-Unity-Sim2Sim
 
-MicroDuck 的 **Unity / 团结引擎版 Sim2Sim** 工程：在团结引擎
-(`2022.3.62t14`, `1.10.2`) 中运行并验证官方 MuJoCo 模型与 ONNX 策略。
+MicroDuck 的 **PhysX 主线 + 独立 MuJoCo 对照组**工程，使用团结
+(`2022.3.62t14`, `1.10.2`) 与 Barracuda。默认游戏物理是 **PhysX**。
 
 这是 [MicroDuck-Godot-Simi2Sim](https://github.com/sgyli7/MicroDuck-Godot-Simi2Sim)
-的 Unity / 团结引擎对应实现，不是 Godot/Jolt 项目。项目以 MuJoCo 的原生
-运行时作为权威物理后端；团结引擎负责场景、输入、渲染、Windows 构建和
-Barracuda ONNX 推理，同时保留 PhysX/ArticulationBody 路径用于校准与比较。
+的 Unity / 团结引擎对应实现，不是 Godot/Jolt 项目。机器人、球和地形使用
+PhysX / ArticulationBody；MuJoCo 不参与主 Player 的物理计算。
 由于 MicroDuck 3D 模型的许可证限制，本仓仅面向非商业验证与研究使用。
 
-The accepted runtime architecture is:
+**整改尚未完成九模型行为验收。** 下方旧流程及历史报告的通过不能代替
+PhysX 行为通过。当前原生参考组已保全到同级目录
+`../AgenticRobotGame-MuJoCoReference-20260909`，有独立工程、Player 和输入哈希。
+九模型及两组切换报告在分离前后完全一致（除生成时间）；可见场景测试两边
+各 5 项通过。这只证明对照保全，不证明迁移完成。
+
+The main runtime architecture is:
 
 ```text
 Tuanjie input and rendering
@@ -18,17 +23,17 @@ Tuanjie input and rendering
 61-value policy observation -> Barracuda 3.0.1 -> 14 servo targets
           ^                                      |
           |                                      v
-     official MuJoCo 3.12 native state <- 200 Hz physics
+         PhysX articulation state <- 200 Hz PhysX physics
                          policy inference: 50 Hz
 ```
 
-MuJoCo is the physics authority in the playable MVP. Tuanjie owns the scene,
-input, rendering, and build. Barracuda is the ONNX runtime. **Sentis is not a
-project dependency.** The separate PhysX/ArticulationBody importer remains a
-calibration and comparison path only; it is not used to judge policy behavior.
+PhysX is the physics authority in the default Player. **Sentis is not a project
+dependency.** The frozen MuJoCo reference is a separate executable, never a fallback
+physics service for the game. Original and adapted policy results must be separate.
 
-See [the native runtime architecture](docs/native-mujoco-architecture.md) for
-the ownership boundaries and generated assets.
+See [the approved remediation plan](docs/superpowers/plans/2026-09-09-physx-main-mujoco-reference.md).
+[The native runtime architecture](docs/native-mujoco-architecture.md) describes the
+historical reference only, not the current game architecture.
 
 ## Locked stack
 
@@ -36,7 +41,7 @@ the ownership boundaries and generated assets.
 | --- | --- | --- |
 | Tuanjie Engine | `2022.3.62t14` (`1.10.2`) | Editor, input, rendering, tests, Windows build |
 | Codely Bridge | `1.0.78` | Editor automation; development-time only |
-| `org.mujoco` | `3.12.0`, commit `13827e9ee56f097f57acf69ae52b078f9839682d` | Official Unity importer and native physics runtime |
+| `org.mujoco` | `3.12.0`, commit `13827e9ee56f097f57acf69ae52b078f9839682d` | Frozen reference only; removed from main game |
 | Barracuda | `3.0.1`, commit `eefb8cb01e6c6a3a9f839e93bd5d0338f0b5a2f5` | CPU ONNX inference (`61D -> 14D`) |
 | MicroDuck | commit `9f7eaad1008fffd90ef871a33a18aecd066b51a9` | Robot source and nine official ONNX policies |
 | `microduck_rl` | commit `5946fd9cdbc58956424420153e51975af3b30d77` | MJCF models, PPO, and export source |

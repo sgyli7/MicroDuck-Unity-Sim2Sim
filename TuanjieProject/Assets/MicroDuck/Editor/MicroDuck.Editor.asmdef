@@ -3,10 +3,7 @@
   "rootNamespace": "AgenticRobot.MicroDuck.Editor",
   "references": [
     "MicroDuck.Runtime",
-    "MicroDuck.MujocoRuntime",
-    "Unity.Barracuda",
-    "Mujoco.Runtime",
-    "Mujoco.Editor"
+    "Unity.Barracuda"
   ],
   "includePlatforms": [
     "Editor"

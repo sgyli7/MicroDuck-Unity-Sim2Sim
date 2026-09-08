@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 420776335515186640}
   - component: {fileID: 9202894745899187519}
+  - component: {fileID: 3312607385151058960}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: hip_l
@@ -65,7 +66,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: -3.4377468
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -103,6 +104,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &3312607385151058960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4188497506793835}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 9202894745899187519}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &31748271654684632
 GameObject:
   m_ObjectHideFlags: 0
@@ -469,6 +485,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6196986539519835164}
   - component: {fileID: 1508819351806637741}
+  - component: {fileID: 1594532899570252599}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: yaw2roll
@@ -525,7 +542,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: -4.0107045
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -563,6 +580,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &1594532899570252599
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 280446100342174237}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 1508819351806637741}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &296728292773316210
 GameObject:
   m_ObjectHideFlags: 0
@@ -1421,6 +1453,7 @@ GameObject:
   m_Component:
   - component: {fileID: 169861888929194870}
   - component: {fileID: 464275340210831797}
+  - component: {fileID: 8505860740891817915}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: jaw_soft
@@ -1491,7 +1524,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: 0.5729578
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -1529,6 +1562,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &8505860740891817915
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1359885706029101042}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 464275340210831797}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &1360453165971456423
 GameObject:
   m_ObjectHideFlags: 0
@@ -2151,6 +2199,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8815119625747307048}
   - component: {fileID: 2197197538411212469}
+  - component: {fileID: 4155691067655514179}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: upper_leg_left
@@ -2208,7 +2257,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: -2.8647888
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -2246,6 +2295,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &4155691067655514179
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1759761347641831479}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 2197197538411212469}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &1770355129520290192
 GameObject:
   m_ObjectHideFlags: 0
@@ -2523,6 +2587,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7355209519684947510}
   - component: {fileID: 9145135490431408716}
+  - component: {fileID: 8833834247636928808}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: neck
@@ -2579,7 +2644,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: -1.1459156
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -2617,6 +2682,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &8833834247636928808
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2020421433093124088}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 9145135490431408716}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &2238190824898996873
 GameObject:
   m_ObjectHideFlags: 0
@@ -2861,6 +2941,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5311192920638623916}
   - component: {fileID: 5987407533569981821}
+  - component: {fileID: 3691152782768749814}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: upper_leg_right
@@ -2918,7 +2999,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: 2.2918313
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -2956,6 +3037,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &3691152782768749814
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2569025293492006062}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 5987407533569981821}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &2570289023867797711
 GameObject:
   m_ObjectHideFlags: 0
@@ -3335,6 +3431,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8386012937578042445}
   - component: {fileID: 249788550240818429}
+  - component: {fileID: 1893571245811111530}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: yaw_roll_motion
@@ -3429,6 +3526,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &1893571245811111530
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3061175467358901116}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 249788550240818429}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &3089708461930823070
 GameObject:
   m_ObjectHideFlags: 0
@@ -4510,6 +4622,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8000284884740929737}
   - component: {fileID: 90997735735865575}
+  - component: {fileID: 1106052337675511340}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: ankle_r_v1
@@ -4566,7 +4679,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: 3.4377468
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -4604,6 +4717,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &1106052337675511340
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4031512345424759814}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 90997735735865575}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &4181678203035112413
 GameObject:
   m_ObjectHideFlags: 0
@@ -4726,6 +4854,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8946113927125968283}
   - component: {fileID: 5029492864892431586}
+  - component: {fileID: 2032727992815333352}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: leg_2
@@ -4781,7 +4910,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: 2.8647888
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -4819,6 +4948,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &2032727992815333352
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4257177524054087385}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 5029492864892431586}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &4323314272835139178
 GameObject:
   m_ObjectHideFlags: 0
@@ -5667,6 +5811,7 @@ GameObject:
   m_Component:
   - component: {fileID: 851688073996907331}
   - component: {fileID: 7145615473151358003}
+  - component: {fileID: 8302583495619672816}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: leg
@@ -5722,7 +5867,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: -2.2918313
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -5760,6 +5905,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &8302583495619672816
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5484016821660911823}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 7145615473151358003}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &5523808499412432866
 GameObject:
   m_ObjectHideFlags: 0
@@ -6507,6 +6667,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4707857552527523045}
   - component: {fileID: 3082617117298764680}
+  - component: {fileID: 118137889298589648}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: bearing_roll
@@ -6563,7 +6724,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: 1.1459156
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -6601,6 +6762,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &118137889298589648
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6502070233330938597}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 3082617117298764680}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &6554962280740744990
 GameObject:
   m_ObjectHideFlags: 0
@@ -7676,6 +7852,7 @@ GameObject:
   m_Component:
   - component: {fileID: 918322299420085936}
   - component: {fileID: 5549605857625064556}
+  - component: {fileID: 8041728579205621294}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: hip_l_2
@@ -7731,7 +7908,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: 1.7188734
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -7769,6 +7946,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &8041728579205621294
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7188897598878625038}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 5549605857625064556}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &7290629936151875399
 GameObject:
   m_ObjectHideFlags: 0
@@ -8794,6 +8986,7 @@ GameObject:
   m_Component:
   - component: {fileID: 380025104415865702}
   - component: {fileID: 5895324100272243059}
+  - component: {fileID: 2340722631026377320}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: ankle_l_v1
@@ -8850,7 +9043,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: -1.7188734
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -8888,6 +9081,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &2340722631026377320
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7999108942355931707}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 5895324100272243059}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &8008681976315274630
 GameObject:
   m_ObjectHideFlags: 0
@@ -9754,6 +9962,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6882119670350494694}
   - component: {fileID: 3536538391043394584}
+  - component: {fileID: 3514557395815558118}
   m_Layer: 0
   m_HasEditorInfo: 1
   m_Name: neck_pitch
@@ -9808,7 +10017,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0
+    target: -0.5729578
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -9846,6 +10055,21 @@ ArticulationBody:
   m_Immovable: 0
   m_UseGravity: 1
   m_CollisionDetectionMode: 0
+--- !u!114 &3514557395815558118
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8662881834585327918}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ce3d5c20b9bb834589b802b7215dc7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joint: {fileID: 3536538391043394584}
+  rotorInertia: 0.0018
+  mechanicalDamping: 0.053
 --- !u!1 &8692815918911134597
 GameObject:
   m_ObjectHideFlags: 0

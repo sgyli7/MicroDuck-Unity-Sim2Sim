@@ -34,9 +34,11 @@ The upstream official MuJoCo baseline is distinct from our current modified refe
 ## Execution record
 
 - [x] Inspect repository and approved architecture; main was clean at 3a97ebe.
-- [ ] Open draft PR before implementation.
-- [ ] Preserve and independently verify the current runnable reference.
-- [ ] Establish engine identity and default PhysX build (test first).
+- [x] Open draft PR before implementation: PR #2.
+- [x] Preserve and independently verify the current runnable reference (4,662 hashes;
+  nine-policy/compound numerical reports identical except timestamp, both scene suites 5/5).
+- [x] Establish engine identity and default PhysX build (red/green default-scene and
+  collision tests, 68/68 EditMode, real Player sampler integration passed).
 - [ ] Implement shared A/B experiment/trace pipeline (test first).
 - [ ] Diagnose and correct PhysX transfer failures (test first).
 - [ ] Connect real PhysX training and ONNX re-export (test first).
@@ -46,3 +48,28 @@ Work branch: codex/physx-main-mujoco-reference. Each completed slice is committe
 generated caches, credentials and builds remain excluded. Main is merged only after
 appropriate review and verification. Existing misleading delivery reports remain
 historical evidence, not current PhysX acceptance.
+
+## Verified slices / outstanding behavior (2026-09-09)
+
+Frozen reference: `../AgenticRobotGame-MuJoCoReference-20260909`, original revision
+`3a97ebec04455d9e04f725f0b6e5db7042fe94f8`. Its complete Player and required untracked
+inputs are included in the hash manifest. Main-project native inputs were moved to
+`artifacts/sim2sim/retired-main-inputs` only after reference equivalence was verified.
+
+Main keeps seven terrain modules, real PhysX colliders, environment/camera, Barracuda
+and Codely. Same-rig kick switching and selected-terrain reset regressions are covered.
+PhysX-only sampler has independent PhysicsScenes, transactional action validation,
+partial resets and the same game controller. Network access is loopback-only/opt-in.
+
+**Behavior is NOT accepted.** Initial full PlayMode: 10/13 passed, 3 failed, no skipped
+tests. Home-hold, servo step response and the strict policy aggregate fail. The rotor
+inertia approximation improved the isolated servo test but regressed walking, and is
+disabled by default. Source action magnitude guards remain intact. Historical native
+suite thresholds are preservation checks, not the final nine-skill quality standard.
+
+Latest software evidence: `artifacts/sim2sim/physx-split-editmode-final.xml` (68/68),
+`batch-green.xml` (4/4 interactions/sampler isolation), and
+`tests/test_physx_player_integration.py` against the actual 2-environment Player.
+Original ONNX → restored actor → export numerical tests: all nine pass (absolute
+tolerance 1e-4 plus relative 2e-5 on seeded inputs). This is numerical parity, not
+cross-engine behavior equivalence.

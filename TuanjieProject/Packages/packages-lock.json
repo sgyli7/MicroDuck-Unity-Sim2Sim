@@ -65,13 +65,6 @@
         "com.unity.modules.imgui": "1.0.0"
       }
     },
-    "org.mujoco": {
-      "version": "https://github.com/google-deepmind/mujoco.git?path=/unity#13827e9ee56f097f57acf69ae52b078f9839682d",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {},
-      "hash": "13827e9ee56f097f57acf69ae52b078f9839682d"
-    },
     "com.unity.modules.ai": {
       "version": "1.0.0",
       "depth": 0,

@@ -25,6 +25,20 @@ namespace AgenticRobot.MicroDuck
         public RobotVariant Variant => variant;
         public ArticulationBody RootBody => rootBody;
         public int ServoCount => servoBodies == null ? 0 : servoBodies.Length;
+        public Vector3 ResetPosition => initialRootPosition;
+
+        public void PreparePhysicsStep(float dt)
+        {
+            foreach (var rotor in GetComponentsInChildren<RotorInertiaDrive>())
+                if (rotor.enabled) rotor.PrepareStep(dt);
+        }
+
+        public void SetResetPose(Vector3 position, Quaternion rotation)
+        {
+            initialRootPosition = position;
+            initialRootRotation = rotation;
+            initialPoseCaptured = true;
+        }
         public string[] ServoNames => PolicyContract.ServoNames;
         public string[] PassiveWheelNames => variant == RobotVariant.Roller
             ? PolicyContract.RollerPassiveWheelNames
