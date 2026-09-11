@@ -433,6 +433,10 @@ namespace AgenticRobot.MicroDuck.Tests
                 expectedJoints: 19,
                 expectedServos: 14,
                 expectedPassiveJoints: 4);
+            foreach (string path in importedPrefabs)
+                Assert.That(AssetDatabase.LoadAssetAtPath<GameObject>(path)
+                    .GetComponentsInChildren<ArticulationBody>(true).Select(body => body.xDrive.target),
+                    Is.All.EqualTo(0f), "Runtime assertions must not mutate imported prefab assets.");
         }
 
         private static RobotManifestData CreateFixtureManifest()
@@ -615,16 +619,22 @@ namespace AgenticRobot.MicroDuck.Tests
             var targetRadians = Enumerable.Range(0, expectedServos)
                 .Select(index => (index - 7) * 0.01f)
                 .ToArray();
-            rig.ApplyTargets(targetRadians);
-            for (int index = 0; index < manifest.servos.Length; index++)
+            MicroDuckRig runtimeCopy = UnityEngine.Object.Instantiate(rig);
+            try
             {
-                ManifestServoData servo = manifest.servos[index];
-                ArticulationBody servoBody = bodiesByName[joints[servo.jointName].bodyName];
-                Assert.That(
-                    servoBody.xDrive.target,
-                    Is.EqualTo(targetRadians[index] * Mathf.Rad2Deg).Within(1e-5f),
-                    $"Servo index {index} ({servo.name}) is out of manifest order.");
+                runtimeCopy.ApplyTargets(targetRadians);
+                var copiedBodies = runtimeCopy.GetComponentsInChildren<ArticulationBody>(true)
+                    .ToDictionary(body => body.name, StringComparer.Ordinal);
+                for (int index = 0; index < manifest.servos.Length; index++)
+                {
+                    ManifestServoData servo = manifest.servos[index];
+                    ArticulationBody servoBody = copiedBodies[joints[servo.jointName].bodyName];
+                    Assert.That(servoBody.xDrive.target,
+                        Is.EqualTo(targetRadians[index] * Mathf.Rad2Deg).Within(1e-5f),
+                        $"Servo index {index} ({servo.name}) is out of manifest order.");
+                }
             }
+            finally { UnityEngine.Object.DestroyImmediate(runtimeCopy.gameObject); }
 
             var bodyNames = manifest.bodies.Select(body => body.name).ToHashSet(StringComparer.Ordinal);
             int expectedVisuals = manifest.geoms.Count(

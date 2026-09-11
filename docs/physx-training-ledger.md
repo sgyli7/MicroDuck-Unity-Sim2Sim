@@ -25,6 +25,10 @@ minimum upright ≈0.99957. Original walk remained upright at 60 s, but directio
    relative to the episode start and yaw rate. Intermediate candidate still veered
    ≈0.997 m in 6 s. The final 500-iteration candidate moved backward ≈0.269 m and sideways
    ≈0.582 m; **rejected**. Final assessment is separate from training logs.
+3. `walk-critic-v3-20260912`: 600 iterations, current-state privileged critic and
+   corrected heading projection. Final 6 s forward displacement ≈0.089 m, lateral
+   ≈0.023 m, final height ≈0.072 m. **Rejected**: reduced side drift came with lost
+   walking progress and a crouched posture, not successful directional control.
 
 ## Next falsifiable experiment: critic state visibility
 
