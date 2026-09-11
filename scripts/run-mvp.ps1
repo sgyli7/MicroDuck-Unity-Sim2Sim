@@ -56,6 +56,15 @@ if ([string]::IsNullOrWhiteSpace($TuanjieProject)) {
 else {
     $TuanjieProject = [IO.Path]::GetFullPath($TuanjieProject)
 }
+if (-not $ListStages) {
+    $LegacyManifestPath = Join-Path $TuanjieProject 'Packages\manifest.json'
+    if (Test-Path -LiteralPath $LegacyManifestPath) {
+        $LegacyManifest = Get-Content -LiteralPath $LegacyManifestPath -Raw | ConvertFrom-Json
+        if ($null -eq $LegacyManifest.dependencies.'org.mujoco') {
+            throw 'REFERENCE_ONLY: run-mvp.ps1 is the historical MuJoCo runner, not PhysX acceptance. Use it only inside the preserved native reference; it must not build or validate the PhysX game.'
+        }
+    }
+}
 if ([string]::IsNullOrWhiteSpace($ArtifactsRoot)) {
     $ArtifactsRoot = $DefaultArtifactsRoot
 }

@@ -1,0 +1,6 @@
+{
+  "name": "MicroDuck.ReferenceAdapter",
+  "references": ["MicroDuck.Runtime", "MicroDuck.MujocoRuntime", "Mujoco.Runtime"],
+  "allowUnsafeCode": true,
+  "autoReferenced": true
+}

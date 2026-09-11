@@ -1,0 +1,6 @@
+{
+  "name": "MicroDuck.ReferenceAdapter.Editor",
+  "references": ["MicroDuck.ReferenceAdapter"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

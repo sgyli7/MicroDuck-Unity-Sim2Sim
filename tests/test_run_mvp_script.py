@@ -1,9 +1,42 @@
 import json
 import subprocess
+import shutil
+import uuid
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).parents[1]
+
+
+@pytest.fixture(autouse=True)
+def native_reference_project_context(monkeypatch):
+    """These are legacy native-runner tests, never PhysX game acceptance.
+
+    Give dry-run/native-Python gates an explicit native project fixture instead of
+    using the now-PhysX main project. No Editor is launched against this fixture.
+    The separate guard tests exercise refusal of the actual PhysX project.
+    """
+    fixture_root = (ROOT / "artifacts" / "tests" / ("native-runner-" + uuid.uuid4().hex)).resolve()
+    packages = fixture_root / "Packages"
+    packages.mkdir(parents=True)
+    (packages / "manifest.json").write_text(
+        json.dumps({"dependencies": {"org.mujoco": "native-reference-test-fixture"}}),
+        encoding="utf-8")
+    real_run = subprocess.run
+
+    def run_in_reference(arguments, *args, **kwargs):
+        if (isinstance(arguments, list) and str(ROOT / "scripts" / "run-mvp.ps1") in arguments
+                and "-TuanjieProject" not in arguments):
+            arguments = [*arguments, "-TuanjieProject", str(fixture_root)]
+        return real_run(arguments, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", run_in_reference)
+    yield fixture_root
+    assert fixture_root.is_relative_to((ROOT / "artifacts" / "tests").resolve())
+    shutil.rmtree(fixture_root)
+
 EXPECTED_STAGES = [
     "bootstrap",
     "python-tests",
@@ -585,7 +618,9 @@ def test_bootstrap_plan_names_both_immutable_upstream_commits() -> None:
         assert repository["commit"] in serialized
 
 
-def test_clean_generated_dry_run_is_workspace_scoped_and_preserves_codely_proof() -> None:
+def test_clean_generated_dry_run_is_workspace_scoped_and_preserves_codely_proof(
+    native_reference_project_context,
+) -> None:
     completed = subprocess.run(
         [
             "powershell.exe",
@@ -616,7 +651,7 @@ def test_clean_generated_dry_run_is_workspace_scoped_and_preserves_codely_proof(
     assert str((ROOT / ".cache" / "upstream").resolve()) not in clean["targets"]
     assert str((ROOT / ".cache" / "artifacts").resolve()) not in clean["targets"]
     assert str(
-        (ROOT / "TuanjieProject" / "Assets" / "MicroDuck" / "Generated" / "MuJoCo").resolve()
+        (native_reference_project_context / "Assets" / "MicroDuck" / "Generated" / "MuJoCo").resolve()
     ) in clean["targets"]
     assert clean["preserved"] == [str((ROOT / "artifacts" / "mvp" / "codely").resolve())]
 

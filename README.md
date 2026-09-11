@@ -49,7 +49,22 @@ historical reference only, not the current game architecture.
 Repository pins live in `upstream.lock.json`, `TuanjieProject/Packages/manifest.json`,
 and `TuanjieProject/Packages/packages-lock.json`.
 
-## Reproducible MVP runner
+## Current PhysX evidence and sampling
+
+The game Player is `Builds/Windows64/AgenticRobotGame.exe`. Start normally for the
+interactive PhysX scene, or use `-batchmode -nographics -physxPort 62101 -physxEnvs 2`
+for opt-in, IPv4-loopback-only training/evaluation. No reference process is required.
+With `PYTHONPATH=src`, `python -m agenticrobot_bridge.physx_evaluate --output <new.json>`
+records the nine original policies; `--internal` uses the Player's Barracuda actor.
+`physx_training` uses RSL-RL/PyTorch with actual PhysX samples; currently only stand
+and walk rewards are implemented. Adapted exports are named `*_PhysX.onnx`.
+See the approved plan for failed behavior gates and the remaining full-skill work.
+
+## Historical MuJoCo reference workflow — NOT PhysX acceptance
+
+**Everything below documents the old native reference. Its "passed" values do not
+validate the game. `scripts/run-mvp.ps1` now refuses the PhysX project. Do not use
+its MuJoCo rollout/training/build gates as the main project delivery workflow.**
 
 To **revalidate this delivered workspace and its verified PPO/ONNX cache**, the
 prerequisites are a Windows x64 machine, Git, `uv`, and Tuanjie
