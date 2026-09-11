@@ -103,3 +103,38 @@ resume uses cumulative iteration numbers and preserves optimizer moments; origin
 actor/normalizer bytes must be identical throughout warmup. This hypothesis changes
 neither game physics nor frozen behavioral gates. Reject any candidate that loses
 forward progress, crouches, falls or increases direction error.
+
+`walk-warmup-v4-20260912`: 750 iterations, 150 critic-only, 689.9 seconds. Intermediate
+checkpoint 300 improved 6 s side displacement to 0.0751 m but advanced 0.8407 m, above
+the frozen 0.78 m maximum. Checkpoint 600 regressed to 0.6931 m side displacement.
+Final 749 recovered side control (0.0296 m) and remained upright, but advanced
+1.5322 m. **Rejected for control-speed/trajectory mismatch**. These are actual
+independent PhysX/ORT evaluations; original default game models remain unchanged.
+When resuming warmup runs, repeat the intended total `--critic-warmup-iterations`;
+the CLI currently takes that threshold from the new invocation, not the checkpoint.
+
+## Measured-motion reward hypothesis (stand/walk slice)
+
+The prior reward encouraged 0.2 m/s, while this original MuJoCo walking deployment
+actually progressed about 0.492 m in 6 s and the frozen game comparison requires
+0.35–0.78 m. Merely rewarding higher speed conflicts with the accepted reference.
+Use a complete, hash-bound measured-reference episode as offline reward targets for
+joint pose/velocity, root height, initial-heading velocity/displacement, gravity and
+heading. The actor still sees only 61 PhysX observations; no reference state is sent
+to a body, no MuJoCo process participates in target stepping, and original ONNX stays
+untouched. Reference timestamps are dense integer 200 Hz ticks; target rewards sample
+at its own 50 Hz post-action boundaries. References with changed model identity,
+wrong coordinates, missing ticks, faults or unstable stand/walk are rejected.
+
+This changes the training objective, not the acceptance thresholds. Fresh optimizer/
+critic required for a changed reward/reference; checkpoint metadata binds both.
+First implementation remains stand/walk only. Other skills still explicitly reject
+training until their actual target lifecycles/rewards are implemented.
+
+The full recorded endpoint is a finite terminal (no value bootstrap). A shorter
+training cutoff remains a timeout and bootstraps from the actual next PhysX state.
+Checkpoint/run metadata binds the actual target episode length; changed or missing
+length is rejected on resume. Older unbound checkpoints require their original code
+or a fresh experiment, rather than guessing the horizon. Executed per-frame policy
+identity is checked independently of the episode label. Unit plus actual native /
+PhysX / CUDA integration: 21 passed, 88% combined coverage; independent review clean.

@@ -11,8 +11,41 @@ from pathlib import Path
 import numpy as np
 import onnxruntime as ort
 import torch
+import pytest
 
 from agenticrobot_bridge.physx_training import train
+
+
+def test_actual_reference_reward_trains_only_on_independent_physx_samples(tmp_path):
+    from agenticrobot_bridge.shared_experiment import make_batch, run_players, write_new
+
+    root = Path(__file__).parents[1]
+    batch = make_batch(root / '.cache/upstream/microduck/policies', 92318)
+    batch['cases'] = [batch['cases'][0]]
+    batch['cases'][0]['physicsSteps'] = 40
+    spec = tmp_path / 'reference-spec.json'
+    write_new(spec, batch)
+    evidence = tmp_path / 'paired'
+    run_players(spec, evidence,
+                root.parent / 'AgenticRobotGame-MuJoCoMeasured-20260909/Builds/MeasuredReference/AgenticRobotGame-MuJoCoReference.exe',
+                root / 'Builds/Windows64/AgenticRobotGame.exe', 62103)
+    args = argparse.Namespace(output=str(tmp_path / 'motion-ppo'),
+                              policy=str(root / '.cache/upstream/microduck/policies/alpha_walking.onnx'),
+                              slot=1, port=62101, device='cuda', seed=94023, learning_rate=1e-6,
+                              episode_seconds=.1, iterations=2, save_interval=1, resume=None,
+                              reference_trace=str(evidence / 'reference.json'),
+                              reference_case=batch['cases'][0]['id'])
+    train(args)
+    metadata = json.loads((Path(args.output) / 'run.json').read_text())
+    assert metadata['env']['reward_version'] == 'measured-motion-v1'
+    assert metadata['env']['reference']['trace_sha256']
+    assert metadata['sampling']['engine'] == 'PhysX'
+    assert metadata['behavior_accepted'] is False
+    args.resume = str(Path(args.output) / 'checkpoint_000001.pt')
+    args.output = str(tmp_path / 'changed-horizon')
+    args.episode_seconds = .2
+    with pytest.raises(ValueError, match='horizon'):
+        train(args)
 
 
 def test_critic_warmup_keeps_original_actor_exact_and_resume_starts_actor_updates(tmp_path):

@@ -20,6 +20,7 @@ from tensordict import TensorDict
 
 from .physx_actor import ExecutionEnvelope, RestoredActor, actor_from_onnx, export_actor
 from .physx_client import PhysXClient
+from .motion_reference import RecordedMotionReference
 
 
 def heading_yaw(frames):
@@ -62,7 +63,7 @@ def locomotion_reward(frames, actions, slot, initial_yaw=None):
 
 
 class PhysXVecEnv(VecEnv):
-    def __init__(self, client, slot, device="cuda", episode_seconds=6.0):
+    def __init__(self, client, slot, device="cuda", episode_seconds=6.0, motion=None):
         if slot not in (1, 2):
             raise ValueError("Only stand/walk adaptation rewards are currently implemented")
         self.client = client
@@ -71,16 +72,24 @@ class PhysXVecEnv(VecEnv):
         self.num_envs = client.identity["numEnvs"]
         self.num_actions = 14
         self.max_episode_length = int(round(episode_seconds / 0.02))
+        self.motion = motion
+        if motion is not None and (motion.slot != slot or self.max_episode_length > motion.max_steps):
+            raise ValueError('Reference skill/horizon does not cover this target episode')
         self.episode_length_buf = torch.zeros(self.num_envs, dtype=torch.long, device=device)
         self.cfg = {"physics": "PhysX", "slot": slot, "dt": 0.005,
                     "control_dt": 0.02, "reset_microstep": 0,
+                    "target_episode_steps": self.max_episode_length,
                     "critic_observation_version": 1,
                     "critic_extras": ["heading_sin", "heading_cos", "initial_heading_forward_velocity",
                                       "initial_heading_right_velocity", "up_velocity",
                                       "height", "elapsed_fraction"],
                     "action_execution_clip": [-5, 5], "reward_version": "locomotion-v3-heading-projection"}
+        if motion is not None:
+            self.cfg['reward_version'] = motion.provenance['reward_version']
+            self.cfg['reference'] = motion.provenance
         self.frames = client.reset(slot, external=True)
         self.initial_yaw = self._yaw(self.frames)
+        self.initial_positions = np.asarray([frame['rootPosition'] for frame in self.frames], dtype=float)
         self.episodes = []
         self.clipped_values = 0
 
@@ -113,24 +122,33 @@ class PhysXVecEnv(VecEnv):
         self.clipped_values += int((actions.abs() > 5).sum())
         executed = actions.clamp(-5, 5).detach().cpu().numpy()
         self.frames = self.client.step(executed.tolist())
-        rewards, failed = locomotion_reward(self.frames, executed, self.slot, self.initial_yaw)
         self.episode_length_buf += 1
+        if self.motion is None:
+            rewards, failed = locomotion_reward(self.frames, executed, self.slot, self.initial_yaw)
+        else:
+            rewards, failed = self.motion.reward(self.frames, self.episode_length_buf.cpu().numpy(),
+                                                 self.initial_positions, self.initial_yaw)
         timeouts = (self.episode_length_buf >= self.max_episode_length)
         failure_tensor = torch.tensor(failed, device=self.device)
+        # A finite measured trajectory has no defined continuation beyond its end.
+        completed = timeouts & ~failure_tensor if (self.motion is not None
+                     and self.max_episode_length == self.motion.max_steps) else torch.zeros_like(timeouts)
         # A fall coincident with the horizon is still a terminal failure, not a timeout.
-        timeouts = timeouts & ~failure_tensor
-        dones = failure_tensor | timeouts
+        timeouts = timeouts & ~failure_tensor & ~completed
+        dones = failure_tensor | timeouts | completed
         terminal_observations = self.get_observations()
         indices = dones.nonzero().flatten().tolist()
         if indices:
             for index in indices:
                 self.episodes.append({"steps": int(self.episode_length_buf[index]),
                                       "failed": bool(failed[index]),
+                                      "completed_reference": bool(completed[index]),
                                       "timeout": bool(timeouts[index])})
             reset_frames = self.client.reset(self.slot, external=True, indices=indices)
             for index, frame in zip(indices, reset_frames, strict=True):
                 self.frames[index] = frame
                 self.initial_yaw[index] = self._yaw([frame])[0]
+                self.initial_positions[index] = frame['rootPosition']
                 self.episode_length_buf[index] = 0
         return (self.get_observations(), torch.tensor(rewards, device=self.device),
                 dones, {"time_outs": timeouts, "terminal_observations": terminal_observations})
@@ -185,9 +203,15 @@ def train(args):
     source_hash = hashlib.sha256(original_bytes).hexdigest()
     initial = actor_from_onnx(original_bytes).to(args.device)
     config = ppo_config(args.learning_rate, initial_std)
+    motion = None
+    if getattr(args, 'reference_trace', None):
+        reference_bytes = Path(args.reference_trace).read_bytes()
+        motion = RecordedMotionReference(json.loads(reference_bytes), args.slot, source_hash,
+                                          getattr(args, 'reference_case', None))
+        motion.provenance['trace_sha256'] = hashlib.sha256(reference_bytes).hexdigest()
     started = time.monotonic()
     with PhysXClient(port=args.port) as client:
-        env = PhysXVecEnv(client, args.slot, args.device, args.episode_seconds)
+        env = PhysXVecEnv(client, args.slot, args.device, args.episode_seconds, motion)
         algorithm = PPO.construct_algorithm(env.get_observations(), env,
                                             copy.deepcopy(config), args.device)
         algorithm.actor.mlp.load_state_dict(initial.mlp.state_dict(), strict=True)
@@ -209,6 +233,12 @@ def train(args):
                 raise ValueError("Checkpoint source/skill does not match this adaptation")
             if checkpoint.get("critic_observation_version") != env.cfg["critic_observation_version"]:
                 raise ValueError("Checkpoint critic observation schema differs; start a fresh experiment")
+            if checkpoint.get('target_episode_steps') != env.max_episode_length:
+                raise ValueError('Checkpoint target episode horizon differs or is unrecorded; start fresh')
+            if checkpoint.get('reward_version', 'locomotion-v3-heading-projection') != env.cfg['reward_version']:
+                raise ValueError('Checkpoint reward objective differs; start a fresh experiment')
+            if motion is not None and checkpoint.get('reference') != motion.provenance:
+                raise ValueError('Checkpoint reference data differs; start a fresh experiment')
             groups = checkpoint["optimizer_state_dict"]["param_groups"]
             if len(groups) == 1:
                 # Previous RSL optimizer concatenated actor then critic parameters.
@@ -255,7 +285,8 @@ def train(args):
             ["git", "rev-parse", "HEAD"], cwd=source_root, text=True).strip()
         metadata["training_source_hashes"] = {
             file.name: hashlib.sha256(file.read_bytes()).hexdigest()
-            for file in Path(__file__).parent.glob("physx_*.py")
+            for file in [*Path(__file__).parent.glob("physx_*.py"),
+                         Path(__file__).parent / 'motion_reference.py']
         }
         (output / "run.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
@@ -264,6 +295,9 @@ def train(args):
             checkpoint.update(iteration=iteration, source_sha256=source_hash, slot=args.slot)
             checkpoint["critic_observation_version"] = env.cfg["critic_observation_version"]
             checkpoint["optimizer_group_schema"] = 2
+            checkpoint['reward_version'] = env.cfg['reward_version']
+            checkpoint['target_episode_steps'] = env.max_episode_length
+            checkpoint['reference'] = None if motion is None else motion.provenance
             torch.save(checkpoint, output / f"checkpoint_{iteration:06d}.pt")
             export_actor(ExecutionEnvelope(RestoredActor(
                          algorithm.actor.obs_normalizer, algorithm.actor.mlp)),
@@ -315,6 +349,8 @@ def main():
     parser.add_argument("--episode-seconds", type=float, default=6.0)
     parser.add_argument("--seed", type=int, default=37141)
     parser.add_argument("--resume")
+    parser.add_argument('--reference-trace')
+    parser.add_argument('--reference-case')
     args = parser.parse_args()
     if args.iterations < 1 or args.save_interval < 1 or args.episode_seconds <= 0:
         parser.error("Iterations, save interval and episode duration must be positive")
