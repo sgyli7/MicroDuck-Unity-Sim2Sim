@@ -13,7 +13,8 @@ from agenticrobot_bridge import physx_training
 def observations(first_value):
     values = torch.zeros(2, 61)
     values[:, 0] = first_value
-    return TensorDict({"policy": values}, batch_size=[2])
+    return TensorDict({"policy": values, "critic": torch.cat((values, torch.zeros(2, 7)), dim=-1)},
+                      batch_size=[2])
 
 
 def test_terminal_value_is_bootstrapped_once_and_failure_is_not_bootstrapped():
@@ -22,7 +23,7 @@ def test_terminal_value_is_bootstrapped_once_and_failure_is_not_bootstrapped():
                                         SimpleNamespace(num_envs=2, num_actions=14), cfg, "cpu")
     algorithm.critic.obs_normalization = False
     algorithm.critic.obs_normalizer = torch.nn.Identity()
-    algorithm.critic.mlp = torch.nn.Linear(61, 1, bias=False)
+    algorithm.critic.mlp = torch.nn.Linear(68, 1, bias=False)
     with torch.no_grad():
         algorithm.critic.mlp.weight.zero_()
         algorithm.critic.mlp.weight[0, 0] = 1

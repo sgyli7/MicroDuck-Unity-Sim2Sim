@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from agenticrobot_bridge.physx_training import locomotion_reward
+from agenticrobot_bridge.physx_training import PhysXVecEnv, locomotion_reward
 
 
 def frame(height=0.125, upright=1.0, velocity=(0, 0, 0)):
@@ -45,3 +45,10 @@ def test_zero_turn_command_penalizes_heading_drift_from_the_episode_initial_head
                                        initial_yaw=np.array([np.pi / 2]))
     assert good[0] > bad[0] + 1
     assert good == pytest.approx(rotated_start)
+
+
+def test_heading_is_the_unity_forward_projection_even_with_nonzero_roll():
+    rolled = frame(upright=0.5)
+    # Unity yaw 45 degrees followed by local roll 60 degrees, XYZW.
+    rolled["rootRotation"] = [0.191341716, 0.331413574, 0.461939766, 0.800103145]
+    assert PhysXVecEnv._yaw([rolled])[0] == pytest.approx(np.pi / 4, abs=1e-8)

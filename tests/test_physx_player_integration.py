@@ -71,3 +71,18 @@ def test_internal_evaluation_does_not_attribute_an_unverified_source_hash():
     assert result["modelSha256"] is None
     assert result["expectedSourceSha256"]
     assert result["modelIdentityVerified"] is False
+
+
+def test_critic_gets_current_physx_privileged_state_without_changing_actor_inputs():
+    import torch
+    from agenticrobot_bridge.physx_training import PhysXVecEnv
+
+    with PhysXClient(timeout=10) as client:
+        env = PhysXVecEnv(client, 1, device="cpu", episode_seconds=6)
+        observed = env.get_observations()
+        assert observed["policy"].shape == (2, 61)
+        assert observed["critic"].shape == (2, 68)
+        assert torch.equal(observed["critic"][:, :61], observed["policy"])
+        assert torch.all(observed["critic"][:, -1] == 0)
+        observed, _, _, _ = env.step(torch.zeros(2, 14))
+        assert torch.all(observed["critic"][:, -1] > 0)

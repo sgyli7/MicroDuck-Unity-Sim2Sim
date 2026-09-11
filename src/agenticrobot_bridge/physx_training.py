@@ -8,6 +8,7 @@ import argparse
 import copy
 import hashlib
 import json
+import subprocess
 import time
 from pathlib import Path
 
@@ -21,6 +22,12 @@ from .physx_actor import ExecutionEnvelope, RestoredActor, actor_from_onnx, expo
 from .physx_client import PhysXClient
 
 
+def heading_yaw(frames):
+    """Heading of Unity's +Z-forward axis projected on the XZ ground plane."""
+    x, y, z, w = np.asarray([frame["rootRotation"] for frame in frames]).T
+    return np.arctan2(2 * (w * y + x * z), 1 - 2 * (x * x + y * y))
+
+
 def locomotion_reward(frames, actions, slot, initial_yaw=None):
     if slot not in (1, 2):
         raise ValueError(f"Reward for skill slot {slot} is not implemented")
@@ -28,9 +35,7 @@ def locomotion_reward(frames, actions, slot, initial_yaw=None):
     height = np.asarray([f["rootPosition"][1] for f in frames])
     upright = np.asarray([f["upright"] for f in frames])
     velocity = np.asarray([f["rootVelocity"] for f in frames])
-    rotation = np.asarray([f["rootRotation"] for f in frames])
-    x, y, z, w = rotation.T
-    yaw = np.arctan2(2 * (w * y + x * z), 1 - 2 * (y * y + z * z))
+    yaw = heading_yaw(frames)
     forward_speed = np.sin(yaw) * velocity[:, 0] + np.cos(yaw) * velocity[:, 2]
     side_speed = np.cos(yaw) * velocity[:, 0] - np.sin(yaw) * velocity[:, 2]
     healthy = np.asarray([f["healthy"] for f in frames])
@@ -69,7 +74,11 @@ class PhysXVecEnv(VecEnv):
         self.episode_length_buf = torch.zeros(self.num_envs, dtype=torch.long, device=device)
         self.cfg = {"physics": "PhysX", "slot": slot, "dt": 0.005,
                     "control_dt": 0.02, "reset_microstep": 0,
-                    "action_execution_clip": [-5, 5], "reward_version": "locomotion-v2-heading"}
+                    "critic_observation_version": 1,
+                    "critic_extras": ["heading_sin", "heading_cos", "initial_heading_forward_velocity",
+                                      "initial_heading_right_velocity", "up_velocity",
+                                      "height", "elapsed_fraction"],
+                    "action_execution_clip": [-5, 5], "reward_version": "locomotion-v3-heading-projection"}
         self.frames = client.reset(slot, external=True)
         self.initial_yaw = self._yaw(self.frames)
         self.episodes = []
@@ -77,15 +86,26 @@ class PhysXVecEnv(VecEnv):
 
     @staticmethod
     def _yaw(frames):
-        x, y, z, w = np.asarray([frame["rootRotation"] for frame in frames]).T
-        return np.arctan2(2 * (w * y + x * z), 1 - 2 * (y * y + z * z))
+        return heading_yaw(frames)
 
     def get_observations(self):
         values = torch.tensor([f["observation"] for f in self.frames],
                               dtype=torch.float32, device=self.device)
         if not torch.isfinite(values).all():
             raise RuntimeError("Non-finite actual PhysX observation")
-        return TensorDict({"policy": values}, batch_size=[self.num_envs])
+        relative_yaw = self._yaw(self.frames) - self.initial_yaw
+        velocity = np.asarray([frame["rootVelocity"] for frame in self.frames])
+        forward = np.sin(self.initial_yaw) * velocity[:, 0] + np.cos(self.initial_yaw) * velocity[:, 2]
+        side = np.cos(self.initial_yaw) * velocity[:, 0] - np.sin(self.initial_yaw) * velocity[:, 2]
+        extra = np.column_stack((np.sin(relative_yaw), np.cos(relative_yaw),
+                                 forward, side, velocity[:, 1],
+                                 [frame["rootPosition"][1] for frame in self.frames],
+                                 self.episode_length_buf.cpu().numpy() / self.max_episode_length))
+        privileged = torch.tensor(extra, dtype=torch.float32, device=self.device)
+        if not torch.isfinite(privileged).all():
+            raise RuntimeError("Non-finite current PhysX critic state")
+        return TensorDict({"policy": values, "critic": torch.cat((values, privileged), dim=-1)},
+                          batch_size=[self.num_envs])
 
     def step(self, actions):
         if tuple(actions.shape) != (self.num_envs, 14) or not torch.isfinite(actions).all():
@@ -139,7 +159,7 @@ def ppo_config(learning_rate=1e-5):
                       "num_mini_batches": 4, "learning_rate": learning_rate,
                       "schedule": "fixed", "desired_kl": 0.01,
                       "entropy_coef": 0.001, "rnd_cfg": None},
-        "obs_groups": {"actor": ["policy"], "critic": ["policy"]},
+        "obs_groups": {"actor": ["policy"], "critic": ["critic"]},
         "num_steps_per_env": 32, "multi_gpu": None,
     }
 
@@ -170,9 +190,11 @@ def train(args):
         first_iteration = 0
         resume_provenance = None
         if args.resume:
-            checkpoint = torch.load(args.resume, weights_only=False, map_location=args.device)
+            checkpoint = torch.load(args.resume, weights_only=True, map_location=args.device)
             if checkpoint["source_sha256"] != source_hash or checkpoint["slot"] != args.slot:
                 raise ValueError("Checkpoint source/skill does not match this adaptation")
+            if checkpoint.get("critic_observation_version") != env.cfg["critic_observation_version"]:
+                raise ValueError("Checkpoint critic observation schema differs; start a fresh experiment")
             algorithm.load(checkpoint, load_cfg=None, strict=True)
             # The requested LR governs this continuation; preserve optimizer moments,
             # but do not silently let the checkpoint override the run configuration.
@@ -193,11 +215,19 @@ def train(args):
                     "resume": resume_provenance,
                     "actual_learning_rates": [group["lr"] for group in algorithm.optimizer.param_groups],
                     "adapted": True, "behavior_accepted": False}
+        source_root = Path(__file__).parents[2]
+        metadata["training_code_revision"] = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=source_root, text=True).strip()
+        metadata["training_source_hashes"] = {
+            file.name: hashlib.sha256(file.read_bytes()).hexdigest()
+            for file in Path(__file__).parent.glob("physx_*.py")
+        }
         (output / "run.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
         def save(iteration):
             checkpoint = algorithm.save()
             checkpoint.update(iteration=iteration, source_sha256=source_hash, slot=args.slot)
+            checkpoint["critic_observation_version"] = env.cfg["critic_observation_version"]
             torch.save(checkpoint, output / f"checkpoint_{iteration:06d}.pt")
             export_actor(ExecutionEnvelope(RestoredActor(
                          algorithm.actor.obs_normalizer, algorithm.actor.mlp)),
