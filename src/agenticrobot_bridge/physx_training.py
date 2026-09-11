@@ -21,7 +21,7 @@ from .physx_actor import ExecutionEnvelope, RestoredActor, actor_from_onnx, expo
 from .physx_client import PhysXClient
 
 
-def locomotion_reward(frames, actions, slot):
+def locomotion_reward(frames, actions, slot, initial_yaw=None):
     if slot not in (1, 2):
         raise ValueError(f"Reward for skill slot {slot} is not implemented")
     observation = np.asarray([f["observation"] for f in frames], dtype=np.float32)
@@ -44,6 +44,13 @@ def locomotion_reward(frames, actions, slot):
         - 0.01 * np.square(actions).sum(axis=1)
         - 0.02 * np.square(observation[:, :3]).sum(axis=1)
     )
+    if initial_yaw is not None:
+        # These two objectives command zero turn rate. Tracking only body-local
+        # velocity rewards a robot that curves indefinitely while walking forward.
+        # Preserve the episode's own heading, not an arbitrary world-axis heading.
+        heading_error = np.arctan2(np.sin(yaw - initial_yaw), np.cos(yaw - initial_yaw))
+        reward += 2.0 * np.exp(-np.square(heading_error / 0.25))
+        reward += np.exp(-np.square(observation[:, 2] / 0.2))
     failed = (height < 0.065) | (upright < 0.45) | ~healthy
     reward = np.where(failed, -10.0, reward)
     return reward.astype(np.float32), failed
@@ -62,10 +69,16 @@ class PhysXVecEnv(VecEnv):
         self.episode_length_buf = torch.zeros(self.num_envs, dtype=torch.long, device=device)
         self.cfg = {"physics": "PhysX", "slot": slot, "dt": 0.005,
                     "control_dt": 0.02, "reset_microstep": 0,
-                    "action_execution_clip": [-5, 5], "reward_version": "locomotion-v1"}
+                    "action_execution_clip": [-5, 5], "reward_version": "locomotion-v2-heading"}
         self.frames = client.reset(slot, external=True)
+        self.initial_yaw = self._yaw(self.frames)
         self.episodes = []
         self.clipped_values = 0
+
+    @staticmethod
+    def _yaw(frames):
+        x, y, z, w = np.asarray([frame["rootRotation"] for frame in frames]).T
+        return np.arctan2(2 * (w * y + x * z), 1 - 2 * (y * y + z * z))
 
     def get_observations(self):
         values = torch.tensor([f["observation"] for f in self.frames],
@@ -80,7 +93,7 @@ class PhysXVecEnv(VecEnv):
         self.clipped_values += int((actions.abs() > 5).sum())
         executed = actions.clamp(-5, 5).detach().cpu().numpy()
         self.frames = self.client.step(executed.tolist())
-        rewards, failed = locomotion_reward(self.frames, executed, self.slot)
+        rewards, failed = locomotion_reward(self.frames, executed, self.slot, self.initial_yaw)
         self.episode_length_buf += 1
         timeouts = (self.episode_length_buf >= self.max_episode_length)
         failure_tensor = torch.tensor(failed, device=self.device)
@@ -97,6 +110,7 @@ class PhysXVecEnv(VecEnv):
             reset_frames = self.client.reset(self.slot, external=True, indices=indices)
             for index, frame in zip(indices, reset_frames, strict=True):
                 self.frames[index] = frame
+                self.initial_yaw[index] = self._yaw([frame])[0]
                 self.episode_length_buf[index] = 0
         return (self.get_observations(), torch.tensor(rewards, device=self.device),
                 dones, {"time_outs": timeouts, "terminal_observations": terminal_observations})

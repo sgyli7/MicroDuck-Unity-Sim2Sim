@@ -33,3 +33,15 @@ def test_velocity_tracking_is_yaw_rotation_invariant():
     a, _ = locomotion_reward([straight], np.zeros((1, 14)), 1)
     b, _ = locomotion_reward([turned], np.zeros((1, 14)), 1)
     assert a == pytest.approx(b)
+
+
+def test_zero_turn_command_penalizes_heading_drift_from_the_episode_initial_heading():
+    straight = frame(velocity=(0, 0, 0.2))
+    veered = frame(velocity=(0.2, 0, 0))
+    veered["rootRotation"] = [0, 2 ** -0.5, 0, 2 ** -0.5]
+    good, _ = locomotion_reward([straight], np.zeros((1, 14)), 1, initial_yaw=np.array([0.0]))
+    bad, _ = locomotion_reward([veered], np.zeros((1, 14)), 1, initial_yaw=np.array([0.0]))
+    rotated_start, _ = locomotion_reward([veered], np.zeros((1, 14)), 1,
+                                       initial_yaw=np.array([np.pi / 2]))
+    assert good[0] > bad[0] + 1
+    assert good == pytest.approx(rotated_start)
