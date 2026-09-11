@@ -15,6 +15,39 @@ import torch
 from agenticrobot_bridge.physx_training import train
 
 
+def test_critic_warmup_keeps_original_actor_exact_and_resume_starts_actor_updates(tmp_path):
+    from agenticrobot_bridge.physx_actor import actor_from_onnx
+
+    source = Path('.cache/upstream/microduck/policies/alpha_walking.onnx')
+    original = actor_from_onnx(source)
+    args = argparse.Namespace(output=str(tmp_path / 'warmup'), policy=str(source), slot=1,
+                              port=62101, device='cuda', seed=94022, learning_rate=1e-6,
+                              critic_learning_rate=1e-4, initial_std=.025,
+                              critic_warmup_iterations=2, episode_seconds=.1,
+                              iterations=2, save_interval=1, resume=None)
+    train(args)
+    checkpoint = Path(args.output) / 'checkpoint_000001.pt'
+    saved = torch.load(checkpoint, map_location='cpu', weights_only=True)
+    earlier = torch.load(Path(args.output) / 'checkpoint_000000.pt', map_location='cpu', weights_only=True)
+    for name, weight in original.mlp.state_dict().items():
+        assert torch.equal(saved['actor_state_dict']['mlp.' + name], weight), name
+    assert all(torch.equal(saved['actor_state_dict'][name], value)
+               for name, value in earlier['actor_state_dict'].items())
+    assert any(not torch.equal(saved['critic_state_dict'][name], value)
+               for name, value in earlier['critic_state_dict'].items() if name.startswith('mlp.'))
+    metadata = json.loads((Path(args.output) / 'run.json').read_text())
+    assert metadata['ppo']['actor']['distribution_cfg']['init_std'] == .025
+    records = [json.loads(line) for line in (Path(args.output) / 'training.jsonl').read_text().splitlines()]
+    assert all(record['critic_warmup'] for record in records)
+    assert all(record['learning_rates'] == [0.0, 1e-4] for record in records)
+    args.resume, args.output, args.iterations = str(checkpoint), str(tmp_path / 'after-warmup'), 1
+    train(args)
+    resumed = torch.load(Path(args.output) / 'checkpoint_000002.pt', map_location='cpu', weights_only=True)
+    assert any(not torch.equal(resumed['actor_state_dict']['mlp.' + name], weight)
+               for name, weight in original.mlp.state_dict().items())
+    assert [group['lr'] for group in resumed['optimizer_state_dict']['param_groups']] == [1e-6, 1e-4]
+
+
 def test_real_physx_ppo_update_resume_and_export(tmp_path):
     source = Path(__file__).parents[1] / ".cache/upstream/microduck/policies/alpha_stand.onnx"
     args = argparse.Namespace(output=str(tmp_path / "first"), policy=str(source), slot=2,
@@ -32,7 +65,13 @@ def test_real_physx_ppo_update_resume_and_export(tmp_path):
     records = [json.loads(line) for line in (Path(args.output) / "training.jsonl").read_text().splitlines()]
     assert len(records) == 2
     assert any(record["episodes"] for record in records)
-    args.resume = str(checkpoint)
+    # Exercise migration of the earlier single parameter-group checkpoint layout.
+    groups = saved['optimizer_state_dict']['param_groups']
+    saved['optimizer_state_dict']['param_groups'] = [dict(groups[0], params=groups[0]['params'] + groups[1]['params'])]
+    saved.pop('optimizer_group_schema', None)
+    legacy_checkpoint = Path(args.output) / 'legacy-layout.pt'
+    torch.save(saved, legacy_checkpoint)
+    args.resume = str(legacy_checkpoint)
     args.output = str(tmp_path / "resumed")
     args.iterations = 1
     args.learning_rate = 2e-5

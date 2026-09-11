@@ -68,3 +68,38 @@ Canonical-reset recheck (`canonical-rotor-experiment-20260912.xml`) rejected the
 rotor configuration: stand minimum upright fell below zero, walking fell and advanced
 only ≈0.127 m, and roller progress became negative. Default components remain disabled.
 The calibration test is diagnostic and writes a separate `rotor-experiment` report.
+
+## Hypothesis: separate limited motor torque from the reflected-inertia drive
+
+The rejected approximation capped the *combined* motor, mechanical damping and
+reflected-inertia constraint torque at the actuator's 0.96 N m. The source actuator
+limit does not cap its generalized inertia or passive joint damping. Test an opt-in
+variant with the original explicit position-motor torque separately capped, and an
+uncapped implicit velocity drive implementing J/dt plus mechanical damping. This is
+still a discretized approximation, not native PhysX armature or equivalence proof.
+Run the unchanged whole-skill contracts, record a separate split-motor diagnostic,
+and leave generated/default components disabled unless all regressions are resolved.
+
+References: [PhysX implicit articulation drives](https://nvidia-omniverse.github.io/PhysX/physx/5.3.0/docs/Articulations.html),
+[MuJoCo joint armature and actuator limits](https://mujoco.readthedocs.io/en/stable/XMLreference.html),
+[Unity 2022 articulation force API](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/ArticulationBody.SetJointForces.html).
+Newer PhysX SDK armature APIs are not assumed available in this Tuanjie version.
+
+Result: **rejected**. The unchanged isolated ankle calibration passed, but the
+full-body split-motor strict suite diverged severely (unphysical velocities and
+failed standing/walking/roller/compound motion). Evidence: `split-motor-ankle-20260912.xml`
+and `split-motor-rotor-experiment-20260912.xml`; separate behavior JSON retains the
+failure metrics. Single-joint agreement is insufficient to promote this approximation.
+
+## Next training hypothesis: preserve the actor while fitting the critic first
+
+Previous experiments started a randomly initialized critic and a 0.12 action-noise
+scale together with the already-trained actor. Test smaller 0.025 exploration and
+150 iterations of critic-only fitting, followed by a conservative actor learning rate
+1e-6 with critic rate 1e-4. Upstream RSL-RL PPO remains unchanged; separate optimizer
+groups and frozen actor gradients ensure warmup cannot alter policy weights or its
+distribution. The actor still receives only 61 actual PhysX observations. Checkpoint
+resume uses cumulative iteration numbers and preserves optimizer moments; original
+actor/normalizer bytes must be identical throughout warmup. This hypothesis changes
+neither game physics nor frozen behavioral gates. Reject any candidate that loses
+forward progress, crouches, falls or increases direction error.

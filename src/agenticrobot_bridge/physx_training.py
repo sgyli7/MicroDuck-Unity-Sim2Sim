@@ -147,12 +147,12 @@ def record_transition(algorithm, observations, rewards, dones, extras):
     algorithm.process_env_step(observations, bootstrapped, dones, {})
 
 
-def ppo_config(learning_rate=1e-5):
+def ppo_config(learning_rate=1e-5, initial_std=0.12):
     return {
         "actor": {"class_name": "MLPModel", "hidden_dims": [512, 256, 128],
                   "activation": "elu", "obs_normalization": False,
                   "distribution_cfg": {"class_name": "GaussianDistribution",
-                                       "init_std": 0.12, "std_type": "log"}},
+                                       "init_std": initial_std, "std_type": "log"}},
         "critic": {"class_name": "MLPModel", "hidden_dims": [256, 128, 64],
                    "activation": "elu", "obs_normalization": True},
         "algorithm": {"class_name": "PPO", "num_learning_epochs": 4,
@@ -165,6 +165,13 @@ def ppo_config(learning_rate=1e-5):
 
 
 def train(args):
+    initial_std = getattr(args, "initial_std", 0.12)
+    critic_rate = getattr(args, "critic_learning_rate", None)
+    critic_rate = args.learning_rate if critic_rate is None else critic_rate
+    warmup_iterations = getattr(args, "critic_warmup_iterations", 0)
+    if (not np.isfinite([initial_std, critic_rate, args.learning_rate]).all()
+            or min(initial_std, critic_rate, args.learning_rate) <= 0 or warmup_iterations < 0):
+        raise ValueError("Positive finite noise/rates and nonnegative warmup required")
     output = Path(args.output).resolve()
     if output.exists() and any(output.iterdir()) and not args.resume:
         raise FileExistsError("Use a fresh output directory or explicitly resume a checkpoint")
@@ -174,9 +181,10 @@ def train(args):
     torch.set_num_threads(4)
     torch.backends.cuda.matmul.allow_tf32 = False
     original = Path(args.policy).resolve()
-    source_hash = hashlib.sha256(original.read_bytes()).hexdigest()
-    initial = actor_from_onnx(original).to(args.device)
-    config = ppo_config(args.learning_rate)
+    original_bytes = original.read_bytes()
+    source_hash = hashlib.sha256(original_bytes).hexdigest()
+    initial = actor_from_onnx(original_bytes).to(args.device)
+    config = ppo_config(args.learning_rate, initial_std)
     started = time.monotonic()
     with PhysXClient(port=args.port) as client:
         env = PhysXVecEnv(client, args.slot, args.device, args.episode_seconds)
@@ -184,6 +192,12 @@ def train(args):
                                             copy.deepcopy(config), args.device)
         algorithm.actor.mlp.load_state_dict(initial.mlp.state_dict(), strict=True)
         algorithm.actor.obs_normalizer = copy.deepcopy(initial.obs_normalizer)
+        # Keep the upstream PPO implementation. Separate optimizer parameter groups
+        # allow critic fitting without altering the original actor or its noise.
+        algorithm.optimizer.param_groups[0]["params"] = list(algorithm.actor.parameters())
+        algorithm.optimizer.param_groups[0]["name"] = "actor"
+        algorithm.optimizer.add_param_group({"params": list(algorithm.critic.parameters()),
+                                             "name": "critic", "lr": critic_rate})
         with torch.no_grad():
             torch.testing.assert_close(algorithm.actor(env.get_observations()),
                                        initial(env.get_observations()["policy"]))
@@ -195,12 +209,19 @@ def train(args):
                 raise ValueError("Checkpoint source/skill does not match this adaptation")
             if checkpoint.get("critic_observation_version") != env.cfg["critic_observation_version"]:
                 raise ValueError("Checkpoint critic observation schema differs; start a fresh experiment")
+            groups = checkpoint["optimizer_state_dict"]["param_groups"]
+            if len(groups) == 1:
+                # Previous RSL optimizer concatenated actor then critic parameters.
+                # Split indices while retaining all Adam moments and step counters.
+                group = groups[0]
+                split = len(list(algorithm.actor.parameters()))
+                checkpoint["optimizer_state_dict"]["param_groups"] = [
+                    dict(group, params=group["params"][:split], name="actor"),
+                    dict(group, params=group["params"][split:], name="critic")]
             algorithm.load(checkpoint, load_cfg=None, strict=True)
             # The requested LR governs this continuation; preserve optimizer moments,
             # but do not silently let the checkpoint override the run configuration.
             algorithm.learning_rate = args.learning_rate
-            for group in algorithm.optimizer.param_groups:
-                group["lr"] = args.learning_rate
             resume_provenance = {
                 "checkpoint": str(Path(args.resume).resolve()),
                 "checkpointSha256": hashlib.sha256(Path(args.resume).read_bytes()).hexdigest(),
@@ -209,10 +230,24 @@ def train(args):
                 "semantics": "optimizer/model continuation with fresh seeded episodes",
             }
             first_iteration = checkpoint["iteration"] + 1
+        def configure_iteration(iteration):
+            warming = iteration < warmup_iterations
+            for parameter in algorithm.actor.parameters():
+                parameter.requires_grad_(not warming)
+            for group, rate in zip(algorithm.optimizer.param_groups,
+                                   [0.0 if warming else args.learning_rate, critic_rate], strict=True):
+                group["lr"] = rate
+            return warming
+
+        configure_iteration(first_iteration)
         metadata = {"engine": "PhysX", "sampling": client.identity, "source": str(original),
                     "source_sha256": source_hash, "seed": args.seed, "slot": args.slot,
                     "env": env.cfg, "ppo": config, "torch": torch.__version__,
                     "resume": resume_provenance,
+                    "optimization": {"critic_warmup_iterations": warmup_iterations,
+                                     "actor_learning_rate": args.learning_rate,
+                                     "critic_learning_rate": critic_rate,
+                                     "warmup_preserves_actor_exactly": True},
                     "actual_learning_rates": [group["lr"] for group in algorithm.optimizer.param_groups],
                     "adapted": True, "behavior_accepted": False}
         source_root = Path(__file__).parents[2]
@@ -228,6 +263,7 @@ def train(args):
             checkpoint = algorithm.save()
             checkpoint.update(iteration=iteration, source_sha256=source_hash, slot=args.slot)
             checkpoint["critic_observation_version"] = env.cfg["critic_observation_version"]
+            checkpoint["optimizer_group_schema"] = 2
             torch.save(checkpoint, output / f"checkpoint_{iteration:06d}.pt")
             export_actor(ExecutionEnvelope(RestoredActor(
                          algorithm.actor.obs_normalizer, algorithm.actor.mlp)),
@@ -236,6 +272,7 @@ def train(args):
         obs = env.get_observations()
         algorithm.train_mode()
         for iteration in range(first_iteration, first_iteration + args.iterations):
+            warming = configure_iteration(iteration)
             collection_start = time.monotonic()
             mean_reward = 0.0
             with torch.inference_mode():
@@ -249,6 +286,8 @@ def train(args):
             record = {"iteration": iteration, "seconds": time.monotonic() - started,
                       "iteration_seconds": time.monotonic() - collection_start,
                       "mean_step_reward": mean_reward, "losses": losses,
+                      "critic_warmup": warming,
+                      "learning_rates": [group["lr"] for group in algorithm.optimizer.param_groups],
                       "episodes": env.episodes, "clipped_action_values": env.clipped_values}
             with (output / "training.jsonl").open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(record, allow_nan=False) + "\n")
@@ -270,6 +309,9 @@ def main():
     parser.add_argument("--iterations", type=int, default=300)
     parser.add_argument("--save-interval", type=int, default=25)
     parser.add_argument("--learning-rate", type=float, default=1e-5)
+    parser.add_argument("--critic-learning-rate", type=float)
+    parser.add_argument("--initial-std", type=float, default=0.12)
+    parser.add_argument("--critic-warmup-iterations", type=int, default=0)
     parser.add_argument("--episode-seconds", type=float, default=6.0)
     parser.add_argument("--seed", type=int, default=37141)
     parser.add_argument("--resume")
