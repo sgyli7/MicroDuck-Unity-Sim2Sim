@@ -51,13 +51,19 @@ namespace AgenticRobot.MicroDuck.Tests
             return RunBehaviorContracts(false);
         }
 
-        [UnityTest]
+        [UnityTest, Explicit("Rejected physics experiment; never part of normal behavior acceptance")]
         public IEnumerator ReflectedRotorDiagnosticMeetsTheSameUnchangedBehaviorContracts()
         {
             return RunBehaviorContracts(true);
         }
 
-        private IEnumerator RunBehaviorContracts(bool rotorExperiment)
+        [UnityTest, Explicit("Rejected physics experiment; never part of normal behavior acceptance")]
+        public IEnumerator SplitMotorRotorDiagnosticMeetsTheSameUnchangedBehaviorContracts()
+        {
+            return RunBehaviorContracts(true, true);
+        }
+
+        private IEnumerator RunBehaviorContracts(bool rotorExperiment, bool splitMotor = false)
         {
             yield return SceneManager.LoadSceneAsync("MicroDuckMvp", LoadSceneMode.Single);
             yield return null;
@@ -67,9 +73,15 @@ namespace AgenticRobot.MicroDuck.Tests
             Assert.That(controller, Is.Not.Null, "Generated MVP scene must contain its controller.");
             controller.enabled = false;
 
+            var rotors = UnityEngine.Object.FindObjectsOfType<RotorInertiaDrive>(true);
+            var originalEnabled = rotors.Select(rotor => rotor.enabled).ToArray();
+            var originalModes = rotors.Select(rotor => rotor.SplitMotorDiagnostic).ToArray();
             if (rotorExperiment)
-                foreach (var rotor in UnityEngine.Object.FindObjectsOfType<RotorInertiaDrive>(true))
+                foreach (var rotor in rotors)
+                {
+                    rotor.SplitMotorDiagnostic = splitMotor;
                     rotor.enabled = true;
+                }
 
             float originalFixedDeltaTime = Time.fixedDeltaTime;
             SimulationMode originalSimulationMode = Physics.simulationMode;
@@ -95,6 +107,12 @@ namespace AgenticRobot.MicroDuck.Tests
             }
             finally
             {
+                for (int i = 0; i < rotors.Length; i++)
+                {
+                    rotors[i].enabled = false;
+                    rotors[i].SplitMotorDiagnostic = originalModes[i];
+                    rotors[i].enabled = originalEnabled[i];
+                }
                 Physics.simulationMode = originalSimulationMode;
                 Time.fixedDeltaTime = originalFixedDeltaTime;
             }
@@ -104,7 +122,7 @@ namespace AgenticRobot.MicroDuck.Tests
                 scenario.Seal();
             }
 
-            WriteReport(scenarios, rotorExperiment);
+            WriteReport(scenarios, rotorExperiment, splitMotor);
             string[] failures = scenarios
                 .SelectMany(scenario => scenario.checks
                     .Where(check => !check.passed)
@@ -478,13 +496,14 @@ namespace AgenticRobot.MicroDuck.Tests
             }
         }
 
-        private static void WriteReport(List<ScenarioMetric> scenarios, bool rotorExperiment)
+        private static void WriteReport(List<ScenarioMetric> scenarios, bool rotorExperiment, bool splitMotor = false)
         {
             string repositoryRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", ".."));
             string outputPath = Path.Combine(
                 repositoryRoot,
                 "artifacts",
                 "mvp",
+                splitMotor ? "tuanjie-policy-behavior-split-motor-experiment.json" :
                 rotorExperiment ? "tuanjie-policy-behavior-rotor-experiment.json" : "tuanjie-policy-behavior.json");
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
             var report = new BehaviorReport

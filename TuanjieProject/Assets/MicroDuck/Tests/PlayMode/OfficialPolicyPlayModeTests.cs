@@ -303,6 +303,43 @@ namespace AgenticRobot.MicroDuck.Tests
         [UnityTest]
         public IEnumerator AnkleStepResponseMatchesTheMuJoCoArmatureDynamics()
         {
+            return AnkleResponse(false);
+        }
+
+        [UnityTest, Explicit("Rejected whole-body physics experiment; isolated calibration only")]
+        public IEnumerator SplitMotorAnkleResponseMeetsTheSameCalibration()
+        {
+            return AnkleResponse(true);
+        }
+
+        [UnityTest]
+        public IEnumerator DisablingSplitMotorModeRestoresOriginalDriveAndClearsItsForce()
+        {
+            yield return SceneManager.LoadSceneAsync("MicroDuckMvp", LoadSceneMode.Single);
+            yield return null;
+            var controller = UnityEngine.Object.FindObjectOfType<MicroDuckDemoController>();
+            controller.enabled = false;
+            controller.SelectPolicy(2);
+            var joint = FindBody(controller.ActiveRig, "ankle_left");
+            var rotor = joint.GetComponent<RotorInertiaDrive>();
+            var original = joint.xDrive;
+            try
+            {
+                rotor.enabled = true;
+                rotor.SplitMotorDiagnostic = true;
+                rotor.PrepareStep(.005f);
+                Assert.That(joint.xDrive.stiffness, Is.Zero);
+                rotor.SplitMotorDiagnostic = false;
+                rotor.PrepareStep(.005f);
+                Assert.That(joint.xDrive.stiffness, Is.EqualTo(original.stiffness));
+                Assert.That(joint.xDrive.forceLimit, Is.EqualTo(original.forceLimit));
+                Assert.That(joint.jointForce[0], Is.Zero);
+            }
+            finally { rotor.enabled = false; }
+        }
+
+        private IEnumerator AnkleResponse(bool splitMotor)
+        {
             yield return SceneManager.LoadSceneAsync("MicroDuckMvp", LoadSceneMode.Single);
             yield return null;
 
@@ -311,6 +348,15 @@ namespace AgenticRobot.MicroDuck.Tests
             controller.enabled = false;
 
             Collider[] colliders = controller.ActiveRig.GetComponentsInChildren<Collider>(true);
+            var rotors = controller.ActiveRig.GetComponentsInChildren<RotorInertiaDrive>();
+            var originalEnabled = rotors.Select(rotor => rotor.enabled).ToArray();
+            var originalModes = rotors.Select(rotor => rotor.SplitMotorDiagnostic).ToArray();
+            if (splitMotor)
+                foreach (var rotor in rotors)
+                {
+                    rotor.SplitMotorDiagnostic = true;
+                    rotor.enabled = true;
+                }
             bool[] colliderStates = colliders.Select(collider => collider.enabled).ToArray();
             bool originalAutoSimulation = Physics.autoSimulation;
             Vector3 originalGravity = Physics.gravity;
@@ -354,6 +400,12 @@ namespace AgenticRobot.MicroDuck.Tests
             }
             finally
             {
+                for (int i = 0; i < rotors.Length; i++)
+                {
+                    rotors[i].enabled = false;
+                    rotors[i].SplitMotorDiagnostic = originalModes[i];
+                    rotors[i].enabled = originalEnabled[i];
+                }
                 for (int index = 0; index < colliders.Length; index++)
                 {
                     colliders[index].enabled = colliderStates[index];
