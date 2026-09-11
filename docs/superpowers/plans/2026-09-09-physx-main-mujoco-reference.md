@@ -73,3 +73,31 @@ Latest software evidence: `artifacts/sim2sim/physx-split-editmode-final.xml` (68
 Original ONNX → restored actor → export numerical tests: all nine pass (absolute
 tolerance 1e-4 plus relative 2e-5 on seeded inputs). This is numerical parity, not
 cross-engine behavior equivalence.
+
+## Sampling correction and renewed evidence (2026-09-12)
+
+- Frozen reference rehashed: no changed, missing or added files. A separate measured
+  derivative (`../AgenticRobotGame-MuJoCoMeasured-20260909`) contains additive observers,
+  not modifications to the frozen controller/physics. Its passive probe noninterference
+  test compares all native qpos before/after (stand, 0.2 s); 2/2 adapter tests pass.
+  `current-mujoco-nine-20260912.json` records all nine requested horizons. Completing
+  those horizons is NOT a new skill acceptance result.
+- Found a concrete reset defect: reactivation with `matchAnchors` changed parent
+  anchor rotations by previous joint angles, changing the robot between episodes.
+  Freeze authoring anchors before motion, reset reduced coordinates and publish their
+  explicit-reset geometry without advancing simulation. Identical reset/action and
+  game-vs-replica tests now pass. Persist/reapply solver settings (12/4); they previously
+  reverted to 6/1 when loading saved prefabs. The sampling contract suite is 11/11.
+- Next-state observation no longer overwrites the actual policy-input record. Scheduled
+  sit/stand commands are published before both internal and external actors infer.
+  Real Player protocol/reset tests: 4/4, including internal Barracuda inference.
+- Real PhysX + CUDA RSL-RL PPO update, checkpoint reload/resume and bounded ONNX export
+  are integration-tested: Python 24/24; actor/client/training coverage 89%. Current
+  reward support is ONLY stand/walk. This is pipeline verification, not policy quality.
+- Renewed unmodified nine-policy rollouts exist for ORT and Barracuda. Stand is stable
+  in the short trial; walk still has excessive lateral drift, sit/stand fails, roller
+  crouch still needs a proper moving initial condition. Full PlayMode: 24 total,
+  21 pass, 3 fail (servo response, home hold, strict behavior aggregate). No skips.
+- Prior exploratory PPO outputs generated before the reset correction are NOT accepted
+  adaptation products. Final independent seeds/100 episodes, 60-second runs, common
+  experiment contract, complete task metrics, A/B video and all-skill adaptation remain.

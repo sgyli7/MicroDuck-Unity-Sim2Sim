@@ -85,10 +85,12 @@ namespace AgenticRobot.MicroDuck
             float[] positions, float[] velocities, float nowSeconds)
         {
             if (disposed) throw new ObjectDisposedException(nameof(MicroDuckControlLoop));
-            commands.BuildCommand(nowSeconds, command);
+            var sampledCommand = new float[PolicyObservationBuilder.CommandCount];
+            var sampledObservation = new float[PolicyContract.ObservationCount];
+            commands.BuildCommand(nowSeconds, sampledCommand);
             PolicyObservationBuilder.Build(angularVelocity, gravity, positions, velocities,
-                homePositionRad, previousAction, command, observation);
-            return LastObservation;
+                homePositionRad, previousAction, sampledCommand, sampledObservation);
+            return sampledObservation;
         }
 
         public MicroDuckControlLoopContinuation CaptureContinuation()

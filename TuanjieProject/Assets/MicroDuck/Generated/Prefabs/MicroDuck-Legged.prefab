@@ -454,7 +454,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: 1.0000002, y: 0, z: 0, w: 0}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -750,7 +750,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: 0, y: 0, z: -0.7071069, w: -0.7071069}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -982,7 +982,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: 0.50000006, y: 0.50000006, z: -0.50000006, w: -0.50000006}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -1547,7 +1547,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: -1.0000002, y: 0, z: -0, w: 0}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -2023,7 +2023,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: -0.5000002, y: -0.5000002, z: 0.5000002, w: 0.5000002}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -2812,7 +2812,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: -0.50000006, y: -0.50000006, z: 0.50000006, w: 0.50000006}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -3213,7 +3213,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: -0.5000002, y: -0.5000002, z: -0.5000002, w: 0.5000002}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -3623,7 +3623,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: 0, y: 1.0000001, z: 0, w: 0}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -4121,7 +4121,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: 0, y: 0, z: -0.707107, w: -0.707107}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -4242,7 +4242,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: 0, y: 0.707107, z: 0, w: 0.707107}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -4461,6 +4461,8 @@ MonoBehaviour:
   - {fileID: 6245856521952381835}
   - {fileID: 5735686975612815832}
   - {fileID: 4724104820462597659}
+  solverIterations: 12
+  solverVelocityIterations: 4
 --- !u!1 &3623762040857704339
 GameObject:
   m_ObjectHideFlags: 0
@@ -5049,7 +5051,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: 0, y: 0.707107, z: 0, w: 0.707107}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -5524,7 +5526,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: 0.5000002, y: 0.5000002, z: -0.5000002, w: -0.5000002}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -8027,7 +8029,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: 0, y: 0, z: -0.70710707, w: -0.70710707}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -8324,7 +8326,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: 0, y: 0, z: 0, w: 1.0000002}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 2
   m_LinearX: 2
   m_LinearY: 2
@@ -9076,7 +9078,7 @@ ArticulationBody:
   m_ParentAnchorRotation: {x: 0, y: 0, z: 0.7071068, w: 0.7071068}
   m_AnchorPosition: {x: 0, y: 0, z: 0}
   m_AnchorRotation: {x: 0, y: 0, z: 0.7071068, w: 0.7071068}
-  m_MatchAnchors: 1
+  m_MatchAnchors: 0
   m_ArticulationJointType: 0
   m_LinearX: 2
   m_LinearY: 2

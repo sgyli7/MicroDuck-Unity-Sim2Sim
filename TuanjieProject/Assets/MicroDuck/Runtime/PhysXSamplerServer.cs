@@ -29,7 +29,7 @@ namespace AgenticRobot.MicroDuck
             public string unityVersion = Application.unityVersion;
             public float physicsDt = 0.005f;
             public float controlDt = 0.02f;
-            public float resetInitializationDt = 0.000001f;
+            public float resetInitializationDt = 0f;
             public int numEnvs;
             public string error;
             public PhysXStepResult[] results;
@@ -150,7 +150,8 @@ namespace AgenticRobot.MicroDuck
                             throw new ArgumentException("Action outside the finite [-5,5] execution envelope");
                 }
             }
-            else if (request.actions != null) throw new ArgumentException("Internal ONNX mode takes no actions");
+            else if (request.actions != null && request.actions.Length > 0)
+                throw new ArgumentException("Internal ONNX mode takes no actions");
             response.results = new PhysXStepResult[sessions.Length];
             for (int i = 0; i < sessions.Length; i++)
                 response.results[i] = sessions[i].Step(externalMode ? request.actions[i].values : null);

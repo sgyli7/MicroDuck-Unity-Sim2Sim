@@ -17,6 +17,8 @@ namespace AgenticRobot.MicroDuck
         [SerializeField] private RobotVariant variant;
         [SerializeField] private ArticulationBody rootBody;
         [SerializeField] private ArticulationBody[] servoBodies = Array.Empty<ArticulationBody>();
+        [SerializeField, Min(1)] private int solverIterations = 12;
+        [SerializeField, Min(1)] private int solverVelocityIterations = 4;
 
         private Vector3 initialRootPosition;
         private Quaternion initialRootRotation;
@@ -26,6 +28,7 @@ namespace AgenticRobot.MicroDuck
         public ArticulationBody RootBody => rootBody;
         public int ServoCount => servoBodies == null ? 0 : servoBodies.Length;
         public Vector3 ResetPosition => initialRootPosition;
+        public Quaternion ResetRotation => initialRootRotation;
 
         public void PreparePhysicsStep(float dt)
         {
@@ -72,6 +75,8 @@ namespace AgenticRobot.MicroDuck
             variant = robotVariant;
             rootBody = root;
             servoBodies = (ArticulationBody[])orderedServoBodies.Clone();
+            FreezeJointDefinitions();
+            ApplySimulationSettings();
             CaptureInitialPose();
         }
 
@@ -165,7 +170,17 @@ namespace AgenticRobot.MicroDuck
                 CaptureInitialPose();
             }
 
+            // Re-register the articulation/colliders on an explicit episode reset.
+            // Position/velocity writes alone leave the previous contact solver state alive.
+            if (gameObject.activeInHierarchy)
+            {
+                gameObject.SetActive(false);
+                gameObject.SetActive(true);
+            }
             rootBody.TeleportRoot(initialRootPosition, initialRootRotation);
+            // TeleportRoot updates the physics pose before Unity publishes its Transform.
+            // Publish that same explicit reset pose now, without advancing/contact-solving.
+            rootBody.transform.SetPositionAndRotation(initialRootPosition, initialRootRotation);
             rootBody.velocity = Vector3.zero;
             rootBody.angularVelocity = Vector3.zero;
 
@@ -207,6 +222,24 @@ namespace AgenticRobot.MicroDuck
             rootBody.SetJointVelocities(jointVelocities);
             rootBody.SetJointForces(jointForces);
 
+            // Publish the same reduced-coordinate reset in each link's Transform before
+            // collision detection sees the next step. Unity defers this FK publication;
+            // without it, old episode geometry can survive a zero-time reset.
+            foreach (var body in GetComponentsInChildren<ArticulationBody>())
+            {
+                if (body.isRoot) continue;
+                var parent = body.transform.parent.GetComponent<ArticulationBody>();
+                if (parent == null || body.jointType != ArticulationJointType.RevoluteJoint)
+                    throw new InvalidOperationException("MicroDuck reset requires a revolute articulation tree");
+                float angle = jointPositions[dofStartIndices[body.index]];
+                Quaternion rotation = parent.transform.rotation * body.parentAnchorRotation
+                    * Quaternion.AngleAxis(angle * Mathf.Rad2Deg, Vector3.right)
+                    * Quaternion.Inverse(body.anchorRotation);
+                Vector3 position = parent.transform.TransformPoint(body.parentAnchorPosition)
+                    - rotation * body.anchorPosition;
+                body.transform.SetPositionAndRotation(position, rotation);
+            }
+
             ApplyTargets(homePositionRad);
         }
 
@@ -214,7 +247,29 @@ namespace AgenticRobot.MicroDuck
         {
             if (rootBody != null)
             {
+                FreezeJointDefinitions();
                 CaptureInitialPose();
+            }
+        }
+
+        private void FreezeJointDefinitions()
+        {
+            // Anchor matching is an authoring convenience, not a runtime joint model.
+            // Re-enabling a moved articulation with it on changes its zero-angle frame.
+            foreach (var body in GetComponentsInChildren<ArticulationBody>(true))
+                body.matchAnchors = false;
+        }
+
+        private void OnEnable() => ApplySimulationSettings();
+
+        private void ApplySimulationSettings()
+        {
+            // ArticulationBody's iteration properties are not persisted by this editor.
+            // Store them on the rig and reapply whenever PhysX registers the bodies.
+            foreach (var body in GetComponentsInChildren<ArticulationBody>(true))
+            {
+                body.solverIterations = solverIterations;
+                body.solverVelocityIterations = solverVelocityIterations;
             }
         }
 

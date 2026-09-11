@@ -12,6 +12,7 @@ namespace AgenticRobot.MicroDuck
         public float timeSeconds;
         public int physicsSteps;
         public float[] observation;
+        public float[] policyObservation;
         public float[] action;
         public float[] jointPosition;
         public float[] rootPosition;
@@ -65,8 +66,8 @@ namespace AgenticRobot.MicroDuck
             if (slot == 7) controller.SetTwist(0.3f, 0f, 0f);
             if (slot == 4 || slot == 8) controller.TriggerSkill(0f);
             Physics.SyncTransforms();
-            // Rebuild articulation transforms after explicit reset, before observations.
-            scene.Simulate(0.000001f);
+            // Do not simulate during reset: tiny timesteps can inject contact impulses.
+            // Reduced joint coordinates and the teleported root are already readable.
             return Capture();
         }
 
@@ -82,11 +83,6 @@ namespace AgenticRobot.MicroDuck
             }
             else if (action != null) throw new InvalidOperationException("Reset in external actor mode first");
             float now = steps * 0.005f;
-            if (controller.ActivePolicySlot == 3)
-            {
-                if (!sitTriggered && now >= 1f) { controller.TriggerSkill(now); sitTriggered = true; }
-                if (!standTriggered && now >= 4.5f) { controller.TriggerSkill(now); standTriggered = true; }
-            }
             if (!controller.TickOnce(now)) throw new InvalidOperationException(controller.Fault);
             for (int i = 0; i < 4; i++)
             {
@@ -100,6 +96,13 @@ namespace AgenticRobot.MicroDuck
         private PhysXStepResult Capture()
         {
             float now = steps * 0.005f;
+            // Update commands before publishing the observation that the next action uses.
+            // Both internal and external actors then see exactly the same timeline.
+            if (controller.ActivePolicySlot == 3)
+            {
+                if (!sitTriggered && steps >= 200) { controller.TriggerSkill(now); sitTriggered = true; }
+                if (!standTriggered && steps >= 900) { controller.TriggerSkill(now); standTriggered = true; }
+            }
             var root = controller.ActiveRig.RootBody;
             var rotation = root.transform.rotation;
             return new PhysXStepResult
@@ -107,6 +110,7 @@ namespace AgenticRobot.MicroDuck
                 policy = controller.ActivePolicyName,
                 timeSeconds = now, physicsSteps = steps,
                 observation = controller.Observe(now),
+                policyObservation = controller.LastObservation,
                 action = controller.LastRawAction,
                 jointPosition = controller.LastJointPositionRad,
                 rootPosition = Vector(root.transform.position),

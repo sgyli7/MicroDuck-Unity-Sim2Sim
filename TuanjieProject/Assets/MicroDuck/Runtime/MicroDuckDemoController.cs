@@ -68,13 +68,11 @@ namespace AgenticRobot.MicroDuck
         {
             var legged = Instantiate(leggedRig);
             var roller = Instantiate(rollerRig);
-            var ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            legged.SetResetPose(leggedRig.ResetPosition, leggedRig.ResetRotation);
+            roller.SetResetPose(rollerRig.ResetPosition, rollerRig.ResetRotation);
+            var ground = Instantiate(skillBall.FloorCollider.gameObject);
             ground.name = "PhysX Training Floor";
-            ground.transform.position = new Vector3(0f, -0.05f, 0f);
-            ground.transform.localScale = new Vector3(8f, 0.1f, 8f);
             var groundCollider = ground.GetComponent<Collider>();
-            groundCollider.sharedMaterial = skillBall.FloorCollider.sharedMaterial;
-            groundCollider.contactOffset = 0.001f;
             var ball = Instantiate(skillBall);
             ball.Configure(ball.Body, ball.Collider, groundCollider);
             var host = new GameObject("PhysX Training Controller");
@@ -266,6 +264,7 @@ namespace AgenticRobot.MicroDuck
             physicsStep = 0;
             PolicyTicks = 0;
             activeRig?.ResetPose(HomePositionRad);
+            Array.Copy(HomePositionRad, targets, targets.Length);
             if (activeRig != null && ActivePolicySlot > 0)
             {
                 ConfigureSkillBall(PolicyCatalog.GetBySlot(ActivePolicySlot));
