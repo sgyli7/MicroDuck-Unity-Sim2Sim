@@ -49,3 +49,18 @@ heading helper, regression-tested with yaw 45° plus roll 60°. This is reward v
 Reject if physical directional metrics regress, even if reward/value loss improve.
 The candidate is not production-ready without the user's complete frozen acceptance
 matrix. Any additional calibration/learning hypothesis must get its own evidence entry.
+
+## Physics-only recheck: reflected rotor inertia after canonical reset repair
+
+The earlier whole-robot rotor experiment used the now-invalid reset (mutable joint
+anchors/contact impulses). Repeat the existing strict behavior scenarios with only
+the existing reflected-rotor component enabled, keeping original policy weights and
+all thresholds unchanged. Record a separately named diagnostic report, never replace
+the default game's configuration or its report. Reject the configuration if it improves
+one response but regresses standing, gait, compound skills, or stability. This remains
+an approximate PhysX joint-space drive treatment, not proof of MuJoCo solver equivalence.
+
+Canonical-reset recheck (`canonical-rotor-experiment-20260912.xml`) rejected the full
+rotor configuration: stand minimum upright fell below zero, walking fell and advanced
+only ≈0.127 m, and roller progress became negative. Default components remain disabled.
+The calibration test is diagnostic and writes a separate `rotor-experiment` report.

@@ -48,6 +48,17 @@ namespace AgenticRobot.MicroDuck.Tests
         [UnityTest]
         public IEnumerator OfficialPoliciesMeetMuJoCoDerivedSustainedAndCompoundBehaviorContracts()
         {
+            return RunBehaviorContracts(false);
+        }
+
+        [UnityTest]
+        public IEnumerator ReflectedRotorDiagnosticMeetsTheSameUnchangedBehaviorContracts()
+        {
+            return RunBehaviorContracts(true);
+        }
+
+        private IEnumerator RunBehaviorContracts(bool rotorExperiment)
+        {
             yield return SceneManager.LoadSceneAsync("MicroDuckMvp", LoadSceneMode.Single);
             yield return null;
 
@@ -55,6 +66,10 @@ namespace AgenticRobot.MicroDuck.Tests
                 UnityEngine.Object.FindObjectOfType<MicroDuckDemoController>();
             Assert.That(controller, Is.Not.Null, "Generated MVP scene must contain its controller.");
             controller.enabled = false;
+
+            if (rotorExperiment)
+                foreach (var rotor in UnityEngine.Object.FindObjectsOfType<RotorInertiaDrive>(true))
+                    rotor.enabled = true;
 
             float originalFixedDeltaTime = Time.fixedDeltaTime;
             SimulationMode originalSimulationMode = Physics.simulationMode;
@@ -89,7 +104,7 @@ namespace AgenticRobot.MicroDuck.Tests
                 scenario.Seal();
             }
 
-            WriteReport(scenarios);
+            WriteReport(scenarios, rotorExperiment);
             string[] failures = scenarios
                 .SelectMany(scenario => scenario.checks
                     .Where(check => !check.passed)
@@ -463,18 +478,19 @@ namespace AgenticRobot.MicroDuck.Tests
             }
         }
 
-        private static void WriteReport(List<ScenarioMetric> scenarios)
+        private static void WriteReport(List<ScenarioMetric> scenarios, bool rotorExperiment)
         {
             string repositoryRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", ".."));
             string outputPath = Path.Combine(
                 repositoryRoot,
                 "artifacts",
                 "mvp",
-                "tuanjie-policy-behavior.json");
+                rotorExperiment ? "tuanjie-policy-behavior-rotor-experiment.json" : "tuanjie-policy-behavior.json");
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
             var report = new BehaviorReport
             {
                 schemaVersion = 2,
+                rotorExperiment = rotorExperiment,
                 contractSource = "official MuJoCo rollout metrics and 1.75x action envelopes",
                 timestepSeconds = TimestepSeconds,
                 physicsStepsPerPolicyStep = PhysicsStepsPerPolicyStep,
@@ -1180,6 +1196,8 @@ namespace AgenticRobot.MicroDuck.Tests
         [Serializable]
         private sealed class BehaviorReport
         {
+            public string engine = "PhysX";
+            public bool rotorExperiment;
             public int schemaVersion;
             public string contractSource;
             public float timestepSeconds;
