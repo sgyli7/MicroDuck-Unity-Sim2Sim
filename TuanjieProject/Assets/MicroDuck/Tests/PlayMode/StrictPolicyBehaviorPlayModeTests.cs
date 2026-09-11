@@ -24,6 +24,28 @@ namespace AgenticRobot.MicroDuck.Tests
             new Vector3(-0.00809334f, 0f, -0.0777383f);
 
         [UnityTest]
+        public IEnumerator BehaviorHarnessStartsFromResetWithoutAnUnrecordedPhysicsStep()
+        {
+            yield return SceneManager.LoadSceneAsync("MicroDuckMvp", LoadSceneMode.Single);
+            yield return null;
+            var controller = UnityEngine.Object.FindObjectOfType<MicroDuckDemoController>();
+            controller.enabled = false;
+            var previous = Physics.simulationMode;
+            Physics.simulationMode = SimulationMode.Script;
+            try
+            {
+                Prepare(controller, "reset-contract", 7);
+                Assert.That(controller.ActiveRig.RootBody.velocity.magnitude, Is.LessThan(1e-8f));
+                var q = new float[14];
+                var v = new float[14];
+                controller.ActiveRig.ReadPolicyState(q, v, out _, out _);
+                Assert.That(v, Is.All.EqualTo(0f));
+                Assert.That(controller.ActiveRig.ReadPassiveWheelVelocityRadPerSecond(), Is.All.EqualTo(0f));
+            }
+            finally { Physics.simulationMode = previous; }
+        }
+
+        [UnityTest]
         public IEnumerator OfficialPoliciesMeetMuJoCoDerivedSustainedAndCompoundBehaviorContracts()
         {
             yield return SceneManager.LoadSceneAsync("MicroDuckMvp", LoadSceneMode.Single);
@@ -375,7 +397,6 @@ namespace AgenticRobot.MicroDuck.Tests
             }
 
             Physics.SyncTransforms();
-            Physics.Simulate(1e-6f);
             return new BehaviorProbe(controller, scenarioName);
         }
 
