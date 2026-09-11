@@ -67,6 +67,21 @@ graph bytes. Internal inference reports `modelSha256=null` and a separate build-
 `modelIdentity`; this is an identity check, **not numerical or behavioral equivalence**.
 External ORT inference hashes the same immutable bytes used to construct its session.
 
+Shared independent-player diagnostics (headless; recordings/acceptance are separate):
+
+```powershell
+$env:PYTHONPATH = 'src'
+.venv/Scripts/python -m agenticrobot_bridge.shared_experiment generate --output artifacts/sim2sim/new-experiment.json
+.venv/Scripts/python -m agenticrobot_bridge.shared_experiment run --spec artifacts/sim2sim/new-experiment.json --output artifacts/sim2sim/new-ab-run --reference-player ../AgenticRobotGame-MuJoCoMeasured-20260909/Builds/MeasuredReference/AgenticRobotGame-MuJoCoReference.exe
+```
+
+This starts two separate Players, validates their shared input hash, records actual
+initial poses and compares integer simulation ticks. It includes moving roller-crouch
+and stand/roll/stand time sequences. Version 1 deliberately rejects unsupported terrain
+descriptors; it currently implements flat-floor diagnostics, not all-terrain acceptance.
+Every run needs a new output directory. `physxAcceptedCount` remains zero: completed
+logging and full task-quality acceptance are different gates.
+
 ## Historical MuJoCo reference workflow — NOT PhysX acceptance
 
 **Everything below documents the old native reference. Its "passed" values do not

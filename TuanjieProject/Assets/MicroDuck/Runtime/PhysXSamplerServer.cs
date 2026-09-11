@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using AgenticRobot.Experiments;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -20,6 +21,8 @@ namespace AgenticRobot.MicroDuck
             public bool external;
             public int[] indices;
             public ActionRow[] actions;
+            public string experimentJson;
+            public int caseIndex;
         }
         [Serializable] private sealed class Response
         {
@@ -120,6 +123,29 @@ namespace AgenticRobot.MicroDuck
             if (request.op == "hello")
             {
                 response.models = sessions[0].Controller.CaptureModelIdentities();
+                return response;
+            }
+            if (request.op == "experiment")
+            {
+                if (string.IsNullOrWhiteSpace(request.experimentJson)) throw new ArgumentException("Missing experiment JSON");
+                var batch = JsonUtility.FromJson<ExperimentBatch>(request.experimentJson);
+                if (batch == null) throw new ArgumentException("Missing experiment batch");
+                batch.Validate();
+                if (request.caseIndex < 0 || request.caseIndex >= batch.cases.Length)
+                    throw new ArgumentException("Invalid experiment case index");
+                // Validate all requested sources before mutating any environment.
+                var identities = sessions[0].Controller.CaptureModelIdentities();
+                foreach (var expected in batch.models)
+                {
+                    var actual = Array.Find(identities, item => item.slot == expected.slot);
+                    if (actual == null || !actual.graphVerified || actual.sourceSha256 != expected.sha256)
+                        throw new ArgumentException("Experiment model source differs from the actual Player binding");
+                }
+                string hash = PolicyModelIdentity.Hash(Encoding.UTF8.GetBytes(request.experimentJson));
+                response.results = new PhysXStepResult[sessions.Length];
+                for (int i = 0; i < sessions.Length; i++)
+                    response.results[i] = sessions[i].ResetExperiment(batch.cases[request.caseIndex], hash);
+                externalMode = false;
                 return response;
             }
             if (request.op == "reset")

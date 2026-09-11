@@ -1,6 +1,6 @@
 {
   "name": "MicroDuck.ReferenceAdapter.Editor",
-  "references": ["MicroDuck.ReferenceAdapter"],
+  "references": ["MicroDuck.ReferenceAdapter", "MicroDuck.Runtime", "MicroDuck.MujocoRuntime", "Unity.Barracuda"],
   "includePlatforms": ["Editor"],
   "autoReferenced": true
 }

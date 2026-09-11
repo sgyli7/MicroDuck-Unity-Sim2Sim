@@ -23,3 +23,16 @@ just-solved interval; pose/upright describe the post-integration state. No extra
 implement the required moving approach. These traces are neither official-upstream
 baseline evidence nor PhysX passes. The current batch driver still uses fixed case
 definitions; shared experiment files and full phase-aware acceptance are outstanding.
+# Shared experiment adapter
+
+The measured derivative additionally compiles the exact main-source
+`TuanjieProject/Assets/MicroDuck/Runtime/Sim2SimExperiment.cs` into its adapter
+assembly. Copy that file whenever updating this adapter; never alter the frozen
+reference's original source. `MeasuredReferenceBuild.Build` generates a new
+adapter-only Resources provenance record from the existing frozen model bindings.
+
+`-referenceExperiment <JSON>` consumes the same byte-identical input file as the
+PhysX `experiment` sampler operation. Version 1 supports flat-floor initial root
+position/yaw, integer 200 Hz event ticks, twist/trigger/live same-variant switches.
+Unsupported terrains fail explicitly. The measured controller's native callback
+and dynamics are not replaced; commands enter through its existing public APIs.

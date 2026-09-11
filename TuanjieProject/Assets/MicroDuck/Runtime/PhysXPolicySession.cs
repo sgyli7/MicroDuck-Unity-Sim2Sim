@@ -1,4 +1,5 @@
 using System;
+using AgenticRobot.Experiments;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -9,15 +10,22 @@ namespace AgenticRobot.MicroDuck
     {
         public string engine = "PhysX";
         public string policy;
+        public int activeSlot;
+        public int inferenceSlot;
+        public string experimentId;
+        public string experimentSha256;
         public float timeSeconds;
         public int physicsSteps;
         public float[] observation;
         public float[] policyObservation;
         public float[] action;
         public float[] jointPosition;
+        public float[] jointVelocity;
+        public float[] passiveWheelVelocity;
         public float[] rootPosition;
         public float[] rootRotation;
         public float[] rootVelocity;
+        public float[] rootAngularVelocity;
         public float[] targets;
         public float[] ballPosition;
         public float upright;
@@ -43,6 +51,9 @@ namespace AgenticRobot.MicroDuck
         private int steps;
         private bool sitTriggered;
         private bool standTriggered;
+        private ExperimentCase experiment;
+        private string experimentHash;
+        private int nextEvent;
         public MicroDuckDemoController Controller => controller;
 
         public PhysXPolicySession(MicroDuckDemoController controller)
@@ -56,6 +67,8 @@ namespace AgenticRobot.MicroDuck
 
         public PhysXStepResult Reset(int slot, bool externalActions = false)
         {
+            experiment = null;
+            experimentHash = null;
             if (!controller.SelectPolicy(slot)) throw new InvalidOperationException(controller.Fault);
             controller.ResetActiveRig();
             steps = 0;
@@ -71,8 +84,33 @@ namespace AgenticRobot.MicroDuck
             return Capture();
         }
 
+        public PhysXStepResult ResetExperiment(ExperimentCase spec, string inputHash)
+        {
+            spec.Validate();
+            // Clear command/phase history exactly as an ordinary reset, then apply
+            // the specified pose without changing the saved default game reset pose.
+            Reset(spec.initialSlot, false);
+            var rig = controller.ActiveRig;
+            var originalPosition = rig.ResetPosition;
+            var originalRotation = rig.ResetRotation;
+            try
+            {
+                rig.SetResetPose(new Vector3(spec.initialRootPosition[0], spec.initialRootPosition[1],
+                    spec.initialRootPosition[2]), Quaternion.Euler(0, spec.initialYawDegrees, 0));
+                controller.ResetActiveRig();
+            }
+            finally { rig.SetResetPose(originalPosition, originalRotation); }
+            experiment = spec;
+            experimentHash = inputHash;
+            nextEvent = 0;
+            Physics.SyncTransforms();
+            return Capture();
+        }
+
         public PhysXStepResult Step(float[] action = null)
         {
+            if (experiment != null && steps >= experiment.physicsSteps)
+                throw new InvalidOperationException("Experiment horizon reached");
             if (external != null)
             {
                 PolicyContract.ValidateAction(action);
@@ -96,9 +134,25 @@ namespace AgenticRobot.MicroDuck
         private PhysXStepResult Capture()
         {
             float now = steps * 0.005f;
+            // Preserve the invocation that produced this interval's action before a
+            // scheduled switch replaces the control loop for the NEXT invocation.
+            var executedObservation = controller.LastObservation;
+            var executedAction = controller.LastRawAction;
+            int executedSlot = steps == 0 ? 0 : controller.ActivePolicySlot;
             // Update commands before publishing the observation that the next action uses.
             // Both internal and external actors then see exactly the same timeline.
-            if (controller.ActivePolicySlot == 3)
+            if (experiment != null)
+            {
+                while (nextEvent < experiment.events.Length && experiment.events[nextEvent].physicsStep <= steps)
+                {
+                    var item = experiment.events[nextEvent++];
+                    if (item.kind == "switch" && !controller.HotSwapPolicy(item.slot))
+                        throw new InvalidOperationException(controller.Fault);
+                    if (item.kind == "twist") controller.SetTwist(item.values[0], item.values[1], item.values[2]);
+                    if (item.kind == "trigger") controller.TriggerSkill(now);
+                }
+            }
+            else if (controller.ActivePolicySlot == 3)
             {
                 if (!sitTriggered && steps >= 200) { controller.TriggerSkill(now); sitTriggered = true; }
                 if (!standTriggered && steps >= 900) { controller.TriggerSkill(now); standTriggered = true; }
@@ -108,14 +162,20 @@ namespace AgenticRobot.MicroDuck
             return new PhysXStepResult
             {
                 policy = controller.ActivePolicyName,
+                activeSlot = controller.ActivePolicySlot,
+                inferenceSlot = executedSlot,
+                experimentId = experiment?.id, experimentSha256 = experimentHash,
                 timeSeconds = now, physicsSteps = steps,
                 observation = controller.Observe(now),
-                policyObservation = controller.LastObservation,
-                action = controller.LastRawAction,
+                policyObservation = executedObservation,
+                action = executedAction,
                 jointPosition = controller.LastJointPositionRad,
+                jointVelocity = controller.LastJointVelocityRadPerSecond,
+                passiveWheelVelocity = controller.ActiveRig.ReadPassiveWheelVelocityRadPerSecond(),
                 rootPosition = Vector(root.transform.position),
                 rootRotation = new[] { rotation.x, rotation.y, rotation.z, rotation.w },
                 rootVelocity = Vector(root.velocity),
+                rootAngularVelocity = Vector(root.angularVelocity),
                 targets = controller.LastTargets,
                 ballPosition = controller.SkillBall == null ? new float[3] : Vector(controller.SkillBall.Position),
                 upright = Vector3.Dot(root.transform.up, Vector3.up),

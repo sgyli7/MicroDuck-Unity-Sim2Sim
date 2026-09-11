@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
+using AgenticRobot.Experiments;
 using AgenticRobot.MicroDuck.Mujoco;
 using Mujoco;
 using UnityEngine;
@@ -12,6 +14,8 @@ namespace AgenticRobot.Reference
     {
         public int slot;
         public string policy;
+        public string experimentId;
+        public string experimentSha256;
         public float requestedSeconds;
         public bool completed;
         public bool behaviorAccepted = false;
@@ -27,6 +31,8 @@ namespace AgenticRobot.Reference
         public string coordinateBasis = "right-handed X-forward Y-left Z-up; quaternion WXYZ";
         public string sampling = "passive postUpdateEvent, every native 0.005s step";
         public string unityVersion = Application.unityVersion;
+        public string buildGuid = Application.buildGUID;
+        public ReferenceModelRecord[] models;
         public bool behaviorAccepted = false;
         public ReferenceEpisode[] episodes;
     }
@@ -43,6 +49,11 @@ namespace AgenticRobot.Reference
         private bool sitTriggered;
         private bool standTriggered;
         private bool running;
+        private ExperimentBatch experimentBatch;
+        private ExperimentCase experiment;
+        private string experimentHash;
+        private int nextEvent;
+        private ReferenceModelRecord[] identities;
         public bool Finished { get; private set; }
         public string Error { get; private set; }
 
@@ -54,6 +65,15 @@ namespace AgenticRobot.Reference
             if (index < 0) return;
             if (index + 1 >= args.Length) throw new ArgumentException("-referenceOutput requires a path");
             var driver = new GameObject("MuJoCo Current Reference Measurements").AddComponent<ReferenceBatchDriver>();
+            int specIndex = Array.IndexOf(args, "-referenceExperiment");
+            if (specIndex >= 0)
+            {
+                if (specIndex + 1 >= args.Length) throw new ArgumentException("-referenceExperiment requires a JSON path");
+                string json = File.ReadAllText(args[specIndex + 1]);
+                driver.experimentBatch = JsonUtility.FromJson<ExperimentBatch>(json);
+                driver.experimentBatch.Validate();
+                driver.experimentHash = ReferenceModelIdentity.Hash(Encoding.UTF8.GetBytes(json));
+            }
             driver.Begin(args[index + 1]);
         }
 
@@ -72,15 +92,29 @@ namespace AgenticRobot.Reference
             controller = FindObjectOfType<MujocoDemoController>();
             if (scene == null || controller == null)
                 throw new InvalidOperationException("The frozen reference scene is required");
+            identities = ReferenceModelIdentity.Capture(controller);
+            if (experimentBatch != null)
+                foreach (var expected in experimentBatch.models)
+                {
+                    var actual = Array.Find(identities, item => item.slot == expected.slot);
+                    if (actual == null || !actual.graphVerified || actual.sourceSha256 != expected.sha256)
+                        throw new InvalidOperationException("Reference model differs from shared experiment source");
+                }
             foreach (var keyboard in FindObjectsOfType<MujocoKeyboardPolicyInput>()) keyboard.enabled = false;
             probe = gameObject.AddComponent<MeasurementProbe>();
             scene.preUpdateEvent += ApplyTimeline;
             var episodes = new List<ReferenceEpisode>();
-            for (int slot = 1; slot <= 9; slot++)
+            int count = experimentBatch == null ? 9 : experimentBatch.cases.Length;
+            for (int caseIndex = 0; caseIndex < count; caseIndex++)
             {
                 recording = false;
-                var episode = new ReferenceEpisode { slot = slot, requestedSeconds = Durations[slot - 1] };
-                if (!controller.SelectPolicy(slot))
+                experiment = experimentBatch?.cases[caseIndex];
+                int slot = experiment == null ? caseIndex + 1 : experiment.slot;
+                int initialSlot = experiment == null ? slot : experiment.initialSlot;
+                var episode = new ReferenceEpisode { slot = slot,
+                    experimentId = experiment?.id, experimentSha256 = experimentHash,
+                    requestedSeconds = experiment == null ? Durations[slot - 1] : experiment.physicsSteps * 0.005f };
+                if (!controller.SelectPolicy(initialSlot))
                 {
                     episode.error = controller.Fault;
                     episodes.Add(episode);
@@ -95,22 +129,38 @@ namespace AgenticRobot.Reference
                     episodes.Add(episode);
                     continue;
                 }
-                controller.ResetActiveRobotAt(new Vector3(0f, 0.125f, 0f), 0f, Vector3.zero);
-                if (slot == 1) controller.SetTwist(0.2f, 0f, 0f);
-                if (slot == 7) controller.SetTwist(0.3f, 0f, 0f);
-                if (slot == 4 || slot == 8) controller.TriggerSkill(0f);
+                Vector3 startPosition = experiment == null ? new Vector3(0f, 0.125f, 0f)
+                    : new Vector3(experiment.initialRootPosition[2], experiment.initialRootPosition[1],
+                        -experiment.initialRootPosition[0]);
+                // Frozen plug-in SetMjVector3 maps API [x,y,z] to native [x,z,y].
+                // Shared Unity basis instead maps to native [z,-x,y]. Adapt this
+                // API boundary only; never modify the frozen controller itself.
+                // Frozen API accepts the legged reference height and adds 0.0135 m
+                // for roller rigs. The common file instead names the actual root height.
+                if (experiment != null && ExperimentCase.Roller(initialSlot)) startPosition.y -= 0.0135f;
+                if (!controller.ResetActiveRobotAt(startPosition, experiment?.initialYawDegrees ?? 0f, Vector3.zero))
+                    throw new InvalidOperationException("Reference reset failed: " + controller.Fault);
+                if (experiment == null)
+                {
+                    if (slot == 1) controller.SetTwist(0.2f, 0f, 0f);
+                    if (slot == 7) controller.SetTwist(0.3f, 0f, 0f);
+                    if (slot == 4 || slot == 8) controller.TriggerSkill(0f);
+                }
+                nextEvent = 0;
+                ApplyExperimentEvents();
                 sitTriggered = standTriggered = false;
                 probe.Frames.Clear();
                 probe.Frames.Add(probe.Capture());
                 recording = true;
                 episode.policy = controller.ActivePolicyName;
-                deadline = Time.realtimeSinceStartup + 45f;
-                while (SimulationTime() < episode.requestedSeconds - 1e-9 && controller.IsHealthy
+                deadline = Time.realtimeSinceStartup + Mathf.Max(45f, episode.requestedSeconds * 3f);
+                int requestedTicks = experiment == null ? (int)Math.Round(Durations[slot - 1] / 0.005) : experiment.physicsSteps;
+                while (SimulationTicks() < requestedTicks && controller.IsHealthy
                     && Time.realtimeSinceStartup < deadline)
                     yield return new WaitForFixedUpdate();
                 recording = false;
                 episode.frames = probe.Frames.ToArray();
-                episode.completed = controller.IsHealthy && SimulationTime() >= episode.requestedSeconds - 1e-9;
+                episode.completed = controller.IsHealthy && SimulationTicks() >= requestedTicks;
                 episode.error = episode.completed ? null : controller.IsHealthy ? "Wall-clock timeout" : controller.Fault;
                 episodes.Add(episode);
                 Write(outputPath, episodes);
@@ -123,10 +173,13 @@ namespace AgenticRobot.Reference
         }
 
         private unsafe double SimulationTime() => scene.Data->time;
+        private int SimulationTicks() => (int)Math.Round(SimulationTime() / 0.005);
 
         private void ApplyTimeline(object sender, MjStepArgs args)
         {
-            if (!recording || controller.ActivePolicySlot != 3) return;
+            if (!recording) return;
+            if (experiment != null) { ApplyExperimentEvents(); return; }
+            if (controller.ActivePolicySlot != 3) return;
             double time = SimulationTime();
             if (!sitTriggered && time + 1e-9 >= 1.0)
             { controller.TriggerSkill((float)time); sitTriggered = true; }
@@ -134,10 +187,25 @@ namespace AgenticRobot.Reference
             { controller.TriggerSkill((float)time); standTriggered = true; }
         }
 
-        private static void Write(string path, List<ReferenceEpisode> episodes)
+        private void ApplyExperimentEvents()
+        {
+            if (experiment == null) return;
+            int tick = SimulationTicks();
+            while (nextEvent < experiment.events.Length && experiment.events[nextEvent].physicsStep <= tick)
+            {
+                var item = experiment.events[nextEvent++];
+                if (item.kind == "switch" && !controller.HotSwapPolicy(item.slot))
+                    throw new InvalidOperationException(controller.Fault);
+                if (item.kind == "twist") controller.SetTwist(item.values[0], item.values[1], item.values[2]);
+                if (item.kind == "trigger") controller.TriggerSkill((float)SimulationTime());
+            }
+        }
+
+        private void Write(string path, List<ReferenceEpisode> episodes)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path)));
-            File.WriteAllText(path, JsonUtility.ToJson(new ReferenceBatchReport { episodes = episodes.ToArray() }));
+            File.WriteAllText(path, JsonUtility.ToJson(new ReferenceBatchReport {
+                models = identities, episodes = episodes.ToArray() }));
         }
 
         private void OnDestroy()

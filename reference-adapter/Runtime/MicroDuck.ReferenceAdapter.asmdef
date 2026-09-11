@@ -1,6 +1,6 @@
 {
   "name": "MicroDuck.ReferenceAdapter",
-  "references": ["MicroDuck.Runtime", "MicroDuck.MujocoRuntime", "Mujoco.Runtime"],
+  "references": ["MicroDuck.Runtime", "MicroDuck.MujocoRuntime", "Mujoco.Runtime", "Unity.Barracuda"],
   "allowUnsafeCode": true,
   "autoReferenced": true
 }
