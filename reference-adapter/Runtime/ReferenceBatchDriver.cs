@@ -14,6 +14,7 @@ namespace AgenticRobot.Reference
     {
         public int slot;
         public string policy;
+        public string inference = "Barracuda";
         public string experimentId;
         public string experimentSha256;
         public float requestedSeconds;

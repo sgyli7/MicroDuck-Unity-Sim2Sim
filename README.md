@@ -67,6 +67,15 @@ graph bytes. Internal inference reports `modelSha256=null` and a separate build-
 `modelIdentity`; this is an identity check, **not numerical or behavioral equivalence**.
 External ORT inference hashes the same immutable bytes used to construct its session.
 
+`python -m agenticrobot_bridge.trace_policy_parity --trace <actual-player-trace.json>
+--output <new-parity.json>` compares recorded Barracuda actions with original ONNX
+and the original weights restored into the training actor on the same 61 inputs.
+It requires actual per-frame inference backend and verified graph provenance; an
+external-actor trace cannot claim Barracuda parity. Both independently simulated
+Players passed 9 × 64 sampled-input checks (maximum Barracuda error ≈1.91e-6) in
+`artifacts/sim2sim/*verified-backend-numerical-parity-20260912.json`. This is not
+behavior acceptance, and does not validate any adapted checkpoint.
+
 Shared independent-player diagnostics (headless; recordings/acceptance are separate):
 
 ```powershell

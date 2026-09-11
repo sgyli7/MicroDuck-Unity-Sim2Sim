@@ -40,8 +40,8 @@ class ExecutionEnvelope(nn.Module):
         return self.actor(observation).clamp(-5, 5)
 
 
-def actor_from_onnx(path: str | Path) -> RestoredActor:
-    model = onnx.load(str(path))
+def actor_from_onnx(path: str | Path | bytes) -> RestoredActor:
+    model = onnx.load_model_from_string(path) if isinstance(path, bytes) else onnx.load(str(path))
     onnx.checker.check_model(model)
     nodes = list(model.graph.node)
     if [node.op_type for node in nodes] != [

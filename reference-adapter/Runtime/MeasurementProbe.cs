@@ -15,6 +15,7 @@ namespace AgenticRobot.Reference
         public int physicsSteps;
         public int activeSlot;
         public int inferenceSlot;
+        public string inferenceBackend;
         public double[] jointPosition;
         public double[] jointVelocity;
         public double[] passiveWheelVelocity;
@@ -66,6 +67,7 @@ namespace AgenticRobot.Reference
                 physicsSteps = (int)Math.Round(data->time / 0.005),
                 activeSlot = controller.ActivePolicySlot,
                 inferenceSlot = data->time == 0 ? 0 : controller.ActivePolicySlot,
+                inferenceBackend = controller.BackendName,
                 jointPosition = new double[14], jointVelocity = new double[14],
                 passiveWheelVelocity = new double[controller.ActivePolicySlot == 7 || controller.ActivePolicySlot == 8 ? 4 : 0],
                 policyObservation = (float[])controller.LastObservation.Clone(),

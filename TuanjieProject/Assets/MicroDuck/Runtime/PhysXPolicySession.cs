@@ -12,6 +12,7 @@ namespace AgenticRobot.MicroDuck
         public string policy;
         public int activeSlot;
         public int inferenceSlot;
+        public string inferenceBackend;
         public string experimentId;
         public string experimentSha256;
         public float timeSeconds;
@@ -139,6 +140,7 @@ namespace AgenticRobot.MicroDuck
             var executedObservation = controller.LastObservation;
             var executedAction = controller.LastRawAction;
             int executedSlot = steps == 0 ? 0 : controller.ActivePolicySlot;
+            string executedBackend = controller.BackendName;
             // Update commands before publishing the observation that the next action uses.
             // Both internal and external actors then see exactly the same timeline.
             if (experiment != null)
@@ -164,6 +166,7 @@ namespace AgenticRobot.MicroDuck
                 policy = controller.ActivePolicyName,
                 activeSlot = controller.ActivePolicySlot,
                 inferenceSlot = executedSlot,
+                inferenceBackend = executedBackend,
                 experimentId = experiment?.id, experimentSha256 = experimentHash,
                 timeSeconds = now, physicsSteps = steps,
                 observation = controller.Observe(now),

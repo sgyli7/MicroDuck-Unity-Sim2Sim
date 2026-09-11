@@ -45,6 +45,15 @@ def test_export_refuses_to_overwrite_original_policy(tmp_path):
         export_actor(actor, tmp_path / MODELS[0].name)
 
 
+def test_actor_can_restore_the_same_immutable_bytes_hashed_for_inference():
+    payload = MODELS[0].read_bytes()
+    from_bytes = actor_from_onnx(payload)
+    from_path = actor_from_onnx(MODELS[0])
+    with torch.no_grad():
+        observed = torch.zeros(2, 61)
+        torch.testing.assert_close(from_bytes(observed), from_path(observed), rtol=0, atol=0)
+
+
 def test_adapted_export_has_the_same_action_execution_envelope_as_training(tmp_path):
     actor = actor_from_onnx(MODELS[0])
     with torch.no_grad():
