@@ -9,6 +9,9 @@ namespace AgenticRobot.MicroDuck
     {
         [Range(1, 9)] public int slot;
         public NNModel model;
+        public string sourceSha256;
+        public string convertedOnnxSha256;
+        public string expectedGraphSha256;
     }
 
     public sealed class MicroDuckDemoController : MonoBehaviour
@@ -49,6 +52,14 @@ namespace AgenticRobot.MicroDuck
         public float[] LastJointVelocityRadPerSecond => (float[])jointVelocity.Clone();
         public MicroDuckRig ActiveRig => activeRig;
         public MicroDuckSkillBall SkillBall => skillBall;
+
+        public PolicyModelIdentity[] CaptureModelIdentities()
+        {
+            var identities = new PolicyModelIdentity[policies.Length];
+            for (int i = 0; i < policies.Length; i++)
+                identities[i] = PolicyModelIdentity.Capture(policies[i]);
+            return identities;
+        }
 
         public float[] Observe(float nowSeconds)
         {

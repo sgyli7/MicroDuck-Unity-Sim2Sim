@@ -70,7 +70,24 @@ def test_internal_evaluation_does_not_attribute_an_unverified_source_hash():
         result = rollout(client, 2, policy, 0.02, internal=True)
     assert result["modelSha256"] is None
     assert result["expectedSourceSha256"]
-    assert result["modelIdentityVerified"] is False
+    assert result["modelIdentityVerified"] is True
+    assert result["modelIdentity"]["graphSha256"]
+    assert result["modelIdentity"]["sourceSha256"] == result["expectedSourceSha256"]
+
+
+def test_player_attests_all_nine_actually_bound_barracuda_graphs():
+    import hashlib
+    from pathlib import Path
+
+    with PhysXClient(timeout=10) as client:
+        assert client.identity.get("buildGuid"), "Actual Player build identity is required"
+        models = client.identity.get("models", [])
+        assert sorted(model["slot"] for model in models) == list(range(1, 10))
+        for model in models:
+            assert model["graphVerified"] is True
+            assert len(model["graphSha256"]) == 64
+            path = Path(__file__).parents[1] / ".cache/upstream/microduck/policies" / model["sourceFile"]
+            assert model["sourceSha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def test_critic_gets_current_physx_privileged_state_without_changing_actor_inputs():

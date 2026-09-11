@@ -60,6 +60,13 @@ records the nine original policies; `--internal` uses the Player's Barracuda act
 and walk rewards are implemented. Adapted exports are named `*_PhysX.onnx`.
 See the approved plan for failed behavior gates and the remaining full-skill work.
 
+Sampler `hello` identifies the actual Player build and each bound Barracuda graph.
+Original ONNX, converted ONNX and embedded graph hashes are distinct: the build checks
+the first two against conversion provenance, while the Player hashes its actual bound
+graph bytes. Internal inference reports `modelSha256=null` and a separate build-attested
+`modelIdentity`; this is an identity check, **not numerical or behavioral equivalence**.
+External ORT inference hashes the same immutable bytes used to construct its session.
+
 ## Historical MuJoCo reference workflow — NOT PhysX acceptance
 
 **Everything below documents the old native reference. Its "passed" values do not

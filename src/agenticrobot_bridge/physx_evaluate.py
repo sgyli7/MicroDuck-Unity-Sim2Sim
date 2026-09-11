@@ -17,9 +17,30 @@ POLICIES = ["alpha_walking", "alpha_stand", "alpha_sitstand", "alpha_ground_pick
 DURATIONS = [6, 4, 8, 4, 3, 3, 6, 3, 3]
 
 
+def bound_model_identity(identity, slot, expected_source_hash):
+    models = [model for model in identity.get("models", []) if model.get("slot") == slot]
+    if not models:
+        return None, False
+    if len(models) != 1:
+        raise ValueError("Player reports duplicate model identities for this slot")
+    model = models[0]
+    if model.get("sourceSha256") != expected_source_hash:
+        raise ValueError("Actual Player policy source differs from the requested ONNX")
+    verified = bool(identity.get("buildGuid")) and model.get("graphVerified") is True
+    for field in ("sourceSha256", "convertedOnnxSha256", "graphSha256"):
+        value = model.get(field, "")
+        verified = verified and isinstance(value, str) and len(value) == 64
+        verified = verified and all(char in "0123456789abcdef" for char in value)
+    return model, verified
+
+
 def rollout(client, slot, policy, seconds, internal=False):
     policy = Path(policy)
-    runtime = None if internal else ort.InferenceSession(str(policy),
+    source_bytes = policy.read_bytes()
+    source_hash = hashlib.sha256(source_bytes).hexdigest()
+    model_identity, model_verified = bound_model_identity(client.identity, slot, source_hash) if internal else (None, True)
+    # Hash and infer the same immutable bytes, even if training exports a newer file meanwhile.
+    runtime = None if internal else ort.InferenceSession(source_bytes,
                                                        providers=["CPUExecutionProvider"])
     current = client.reset(slot, external=not internal)
     frames = [[frame] for frame in current]
@@ -58,10 +79,10 @@ def rollout(client, slot, policy, seconds, internal=False):
             "sideDisplacement": float(xyz[-1, 0] - xyz[0, 0]),
             "firstLowOrTippedSeconds": None if not len(below) else episode[int(below[0])]["timeSeconds"],
         })
-    source_hash = hashlib.sha256(policy.read_bytes()).hexdigest()
     return {"engine": "PhysX", "role": "target", "slot": slot,
             "model": policy.name, "modelSha256": None if internal else source_hash,
-            "expectedSourceSha256": source_hash, "modelIdentityVerified": not internal,
+            "expectedSourceSha256": source_hash, "modelIdentityVerified": model_verified,
+            "modelIdentity": model_identity,
             "inference": "Barracuda" if internal else "ONNX Runtime external actor",
             "adapted": policy.name.endswith("_PhysX.onnx"), "behaviorAccepted": False,
             "coordinateBasis": "Unity left-handed X-right Y-up Z-forward",

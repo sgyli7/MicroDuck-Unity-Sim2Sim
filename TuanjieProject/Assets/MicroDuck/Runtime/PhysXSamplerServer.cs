@@ -27,6 +27,8 @@ namespace AgenticRobot.MicroDuck
             public string engine = "PhysX";
             public string role = "target_sampler";
             public string unityVersion = Application.unityVersion;
+            public string buildGuid = Application.buildGUID;
+            public PolicyModelIdentity[] models;
             public float physicsDt = 0.005f;
             public float controlDt = 0.02f;
             public float resetInitializationDt = 0f;
@@ -115,7 +117,11 @@ namespace AgenticRobot.MicroDuck
         {
             if (request == null) throw new ArgumentException("Empty request");
             var response = new Response { numEnvs = sessions.Length };
-            if (request.op == "hello") return response;
+            if (request.op == "hello")
+            {
+                response.models = sessions[0].Controller.CaptureModelIdentities();
+                return response;
+            }
             if (request.op == "reset")
             {
                 PolicyCatalog.GetBySlot(request.slot);

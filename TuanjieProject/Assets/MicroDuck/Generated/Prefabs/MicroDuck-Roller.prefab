@@ -66,7 +66,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: -3.4377468
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -542,7 +542,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: -4.0107045
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -1524,7 +1524,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 0.5729578
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -2257,7 +2257,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: -2.8647888
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -2644,7 +2644,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: -1.1459156
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -2999,7 +2999,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 2.2918313
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -4679,7 +4679,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 3.4377468
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -4910,7 +4910,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 2.8647888
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -5867,7 +5867,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: -2.2918313
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -6724,7 +6724,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 1.1459156
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -7910,7 +7910,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: 1.7188734
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -9045,7 +9045,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: -1.7188734
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:
@@ -10019,7 +10019,7 @@ ArticulationBody:
     stiffness: 0.55
     damping: 0.053
     forceLimit: 0.96
-    target: -0.5729578
+    target: 0
     targetVelocity: 0
     driveType: 0
   m_YDrive:

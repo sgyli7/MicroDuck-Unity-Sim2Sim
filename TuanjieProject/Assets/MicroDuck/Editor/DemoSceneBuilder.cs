@@ -229,17 +229,36 @@ namespace AgenticRobot.MicroDuck.Editor
 
         private static PolicyModelBinding[] LoadPolicyBindings()
         {
+            var report = JsonUtility.FromJson<PolicyAssetReport>(File.ReadAllText(
+                "Assets/MicroDuck/Generated/asset-report.json"));
             return PolicyCatalog.Entries.Select(entry =>
             {
                 string path = $"Assets/MicroDuck/Generated/Policies/Barracuda/{entry.FileName}";
+                string originalPath = $"Assets/MicroDuck/Generated/Policies/Original/{entry.FileName}";
+                var provenance = report.policies.Single(item => item.name == entry.FileName);
+                string sourceHash = PolicyModelIdentity.Hash(File.ReadAllBytes(originalPath));
+                string convertedHash = PolicyModelIdentity.Hash(File.ReadAllBytes(path));
+                if (sourceHash != provenance.sourceSha256 || convertedHash != provenance.barracudaSha256)
+                    throw new InvalidOperationException("Policy files differ from conversion provenance: " + entry.FileName);
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
                 NNModel model = AssetDatabase.LoadAssetAtPath<NNModel>(path);
                 if (model == null)
                 {
                     throw new FileNotFoundException($"Barracuda policy model was not found at '{path}'.", path);
                 }
 
-                return new PolicyModelBinding { slot = entry.Slot, model = model };
+                return new PolicyModelBinding { slot = entry.Slot, model = model,
+                    sourceSha256 = sourceHash, convertedOnnxSha256 = convertedHash,
+                    expectedGraphSha256 = PolicyModelIdentity.Hash(model.modelData.Value) };
             }).ToArray();
+        }
+
+        [Serializable] private sealed class PolicyAssetReport { public PolicyAssetRecord[] policies; }
+        [Serializable] private sealed class PolicyAssetRecord
+        {
+            public string name;
+            public string sourceSha256;
+            public string barracudaSha256;
         }
 
         private static Collider CreateFloor(PhysicMaterial material)
