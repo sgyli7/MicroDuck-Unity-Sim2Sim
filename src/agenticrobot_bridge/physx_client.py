@@ -52,9 +52,9 @@ class PhysXClient:
     def reset(self, slot, external=True, indices=None):
         return self.request("reset", slot=slot, external=external, indices=indices)["results"]
 
-    def step(self, actions=None):
+    def step(self, actions=None, *, record_physics_trace=False):
         packed = None if actions is None else [{"values": list(row)} for row in actions]
-        return self.request("step", actions=packed)["results"]
+        return self.request("step", actions=packed, recordPhysicsTrace=record_physics_trace)["results"]
 
     def close(self):
         self.connection.close()

@@ -23,6 +23,7 @@ namespace AgenticRobot.MicroDuck
             public ActionRow[] actions;
             public string experimentJson;
             public int caseIndex;
+            public bool recordPhysicsTrace;
         }
         [Serializable] private sealed class Response
         {
@@ -35,6 +36,7 @@ namespace AgenticRobot.MicroDuck
             public float physicsDt = 0.005f;
             public float controlDt = 0.02f;
             public float resetInitializationDt = 0f;
+            public string physicsTraceSchema = "physx-microstep-v1-passive-contact-callbacks";
             public int numEnvs;
             public string error;
             public PhysXStepResult[] results;
@@ -186,7 +188,10 @@ namespace AgenticRobot.MicroDuck
                 throw new ArgumentException("Internal ONNX mode takes no actions");
             response.results = new PhysXStepResult[sessions.Length];
             for (int i = 0; i < sessions.Length; i++)
+            {
+                sessions[i].RecordPhysicsTrace = request.recordPhysicsTrace;
                 response.results[i] = sessions[i].Step(externalMode ? request.actions[i].values : null);
+            }
             return response;
         }
 

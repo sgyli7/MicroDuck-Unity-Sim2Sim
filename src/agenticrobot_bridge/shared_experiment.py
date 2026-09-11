@@ -74,23 +74,78 @@ def copy_experiment(source, destination):
     return encoded
 
 
+def validated_microsteps(interval, previous_tick):
+    def finite_vector(record, name, length):
+        array = np.asarray(record.get(name), dtype=float)
+        if array.shape != (length,) or not np.isfinite(array).all():
+            raise ValueError('Dense physics trace contains invalid physical state: ' + name)
+        return array
+
+    trace = interval.get('physicsTrace')
+    if not isinstance(trace, list) or len(trace) != 4 or interval['physicsSteps'] != previous_tick + 4:
+        raise ValueError('Dense physics trace is missing actual substeps')
+    for offset, frame in enumerate(trace, 1):
+        tick = previous_tick + offset
+        if (frame.get('engine') != 'PhysX' or frame.get('physicsSteps') != tick
+                or frame.get('inferenceSlot') != interval['inferenceSlot']
+                or not np.isfinite(frame['timeSeconds'])
+                or abs(frame['timeSeconds'] - tick * .005) > max(1e-8, tick * .005 * 2e-7)):
+            raise ValueError('Dense physics trace tick/engine/executed policy mismatch')
+        for name, length in [('rootPosition', 3), ('rootVelocity', 3), ('rootAngularVelocity', 3),
+                             ('jointPosition', 14), ('jointVelocity', 14), ('mouthTipPosition', 3),
+                             ('ballPosition', 3), ('ballVelocity', 3)]:
+            finite_vector(frame, name, length)
+        rotation = finite_vector(frame, 'rootRotation', 4)
+        if abs(np.linalg.norm(rotation) - 1) > 1e-4 or not np.isfinite(frame.get('upright', np.nan)):
+            raise ValueError('Dense physics trace contains invalid orientation')
+        wheels = frame.get('passiveWheelVelocity')
+        wheel_count = 4 if frame['inferenceSlot'] in (7, 8) else 0
+        if not isinstance(wheels, list) or len(wheels) != wheel_count or not np.isfinite(wheels).all():
+            raise ValueError('Dense physics trace contains invalid passive wheel measurement')
+        if type(frame.get('ballActive')) is not bool:
+            raise ValueError('Dense physics trace missing ball identity')
+        if not isinstance(frame.get('contacts'), list):
+            raise ValueError('Dense physics trace missing contact callback journal')
+        for contact in frame['contacts']:
+            for name in ('point', 'normal', 'pairImpulse'):
+                finite_vector(contact, name, 3)
+            if (not np.isfinite(contact.get('separation', np.nan))
+                    or contact.get('eventKind') not in ('enter', 'stay')
+                    or any(not isinstance(contact.get(key), str) or not contact[key]
+                           for key in ('observer', 'collider', 'otherCollider'))):
+                raise ValueError('Dense physics trace contains invalid contact callback')
+    for field in ('rootPosition', 'rootRotation', 'rootVelocity', 'rootAngularVelocity',
+                  'jointPosition', 'jointVelocity', 'passiveWheelVelocity'):
+        endpoint = finite_vector(interval, field, len(trace[-1][field]))
+        if not np.allclose(trace[-1][field], endpoint, rtol=0, atol=1e-6):
+            raise ValueError('Dense physics endpoint differs from actual control boundary: ' + field)
+    return trace
+
+
 def sample_target(client, encoded):
+    if client.identity.get('physicsTraceSchema') != 'physx-microstep-v1-passive-contact-callbacks':
+        raise ValueError('Target Player does not support verified dense physics measurements')
     batch = json.loads(encoded)
     input_hash = hashlib.sha256(encoded.encode()).hexdigest()
     results = []
     for index, case in enumerate(batch["cases"]):
         current = client.request("experiment", experimentJson=encoded, caseIndex=index)["results"]
         episodes = [[frame] for frame in current]
+        physics_episodes = [[] for _ in current]
         fault = None
         for _ in range(case["physicsSteps"] // 4):
             try:
-                current = client.step()
+                previous = current
+                current = client.step(record_physics_trace=True)
             except RuntimeError as error:
                 fault = {"reason": str(error), "physicsSteps": current[0]["physicsSteps"]}
                 break
-            for frames, frame in zip(episodes, current, strict=True):
+            for frames, physical, before, frame in zip(episodes, physics_episodes, previous, current, strict=True):
                 if frame["experimentSha256"] != input_hash or frame["experimentId"] != case["id"]:
                     raise ValueError("Target changed experiment identity during sampling")
+                physical.extend(validated_microsteps(frame, before['physicsSteps']))
+                # Store each microstep only once, separate from the 50 Hz inference log.
+                frame.pop('physicsTrace')
                 frames.append(frame)
         source = next(item["sha256"] for item in batch["models"] if item["slot"] == case["slot"])
         identity, verified = bound_model_identity(client.identity, case["slot"], source)
@@ -98,7 +153,9 @@ def sample_target(client, encoded):
                         "seed": case["seed"], "requestedSeconds": case["physicsSteps"] * 0.005,
                         "modelIdentity": identity, "modelIdentityVerified": verified,
                         "modelSha256": None, "inference": "Barracuda", "behaviorAccepted": False,
-                        "fault": fault, "episodes": episodes})
+                        "fault": fault, "episodes": episodes, 'physicsEpisodes': physics_episodes,
+                        'contactsSemantics': 'per-step enter/stay callbacks; empty does not exclude sleeping contact; '
+                                             'pair impulse repeated per point and body observer'})
     return {"identity": client.identity, "experimentSha256": input_hash, "results": results,
             "behaviorAccepted": False, "independentSeedsPerSkill": len({case["seed"] for case in batch["cases"]})}
 

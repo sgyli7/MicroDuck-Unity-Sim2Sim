@@ -6,6 +6,7 @@ import uuid
 from pathlib import Path
 
 from agenticrobot_bridge.shared_experiment import make_batch, run_players, write_new
+from agenticrobot_bridge.shared_experiment import validated_microsteps
 
 
 def test_actual_paired_players_use_same_inputs_and_keep_behavior_failures_explicit():
@@ -28,6 +29,14 @@ def test_actual_paired_players_use_same_inputs_and_keep_behavior_failures_explic
     assert comparison["physxAcceptedCount"] == 0
     assert len(comparison["cases"]) == len(reference["episodes"]) == len(target["results"]) == 11
     assert all(item["graphVerified"] for item in reference["models"])
+    for result in target['results']:
+        physical = result['physicsEpisodes'][0]
+        control = result['episodes'][0]
+        assert len(physical) == control[-1]['physicsSteps']
+        assert sum(len(frame['contacts']) for frame in physical) > 0
+        for before, after in zip(control, control[1:]):
+            validated_microsteps({**after, 'physicsTrace': physical[before['physicsSteps']:after['physicsSteps']]},
+                                 before['physicsSteps'])
     for case, measured, result in zip(batch["cases"], reference["episodes"], comparison["cases"], strict=True):
         assert measured["completed"] is True
         assert measured["frames"][-1]["physicsSteps"] == case["physicsSteps"]

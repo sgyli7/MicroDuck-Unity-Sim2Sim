@@ -101,3 +101,33 @@ cross-engine behavior equivalence.
 - Prior exploratory PPO outputs generated before the reset correction are NOT accepted
   adaptation products. Final independent seeds/100 episodes, 60-second runs, common
   experiment contract, complete task metrics, A/B video and all-skill adaptation remain.
+
+## Shared experiment and adaptation progress (2026-09-12, later update)
+
+- Shared v1 flat-ground experiments now drive independent measured MuJoCo and PhysX
+  Players with identical hashed inputs, verified initial root pose/velocity and integer
+  simulation ticks. Nine skills include the moving roller-crouch and stand/roll/recovery
+  timelines. These are diagnostic recordings, not accepted behaviors. Other terrain
+  types remain unsupported by this shared sampler, although the game retains them.
+- Actual Barracuda traces from both engines versus original ORT and restored training
+  actor pass same-input numerical checks for all nine (64 samples per skill). Model
+  provenance binds original ONNX, converted ONNX and the actual bound Barracuda graph.
+- Official pinned upstream controller now runs separately; its default scales, motor
+  cap and automatic lifecycles differ from the frozen current reference. See
+  `docs/official-vs-current-reference.md`; neither reference replaces target sampling.
+- PPO/checkpoint/resume/export uses real PhysX. Four motion experiments remain rejected;
+  measured-motion reward v5 is running separately, not installed in the game. Supported
+  training objectives are still only stand/walk. See `docs/physx-training-ledger.md`.
+- Opt-in PhysX 200 Hz measurements record each real substep, joint/body states, mouth
+  tip, passive wheels, ball and enter/stay contact callbacks. They do not apply states
+  or forces. Empty contact callbacks do NOT prove no sleeping contact; pair impulse is
+  repeated per point/body-side callback and must not be summed blindly. The 50 Hz
+  inference record remains separate, preserving actual executed-model identity.
+  The 12-test game/sampler parity suite passes, including tracing-on/off dynamics
+  equality at 1e-6. Initial actual-player evidence is
+  `shared-integration-971bbd4c7517`: all actual ticks recorded up to each endpoint;
+  sit/stand stopped at tick 1144 and remains incomplete. Zero PhysX skills are promoted.
+
+Outstanding full-scope gates: nine-skill quality/learning, all-terrain shared sampling,
+100 held-out episodes per skill, 60-second controls and transitions, full game object
+interactions, sim-time aligned side-by-side video, packaging and final PR review.

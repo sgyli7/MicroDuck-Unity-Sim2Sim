@@ -10,6 +10,45 @@ namespace AgenticRobot.MicroDuck.Tests
     public sealed class PhysXGamePlayModeTests
     {
         [UnityTest]
+        public IEnumerator DenseMeasurementRecordsEveryPhysicsTickWithoutChangingDynamics()
+        {
+            yield return SceneManager.LoadSceneAsync("MicroDuckMvp", LoadSceneMode.Single);
+            yield return null;
+            var controller = Object.FindObjectOfType<MicroDuckDemoController>();
+            using (var session = new PhysXPolicySession(controller))
+            {
+                var option = typeof(PhysXPolicySession).GetProperty("RecordPhysicsTrace");
+                Assert.That(option, Is.Not.Null, "Missing opt-in dense physics measurement");
+                var field = typeof(PhysXStepResult).GetField("physicsTrace");
+                Assert.That(field, Is.Not.Null);
+                session.Reset(2, true);
+                var plain = new System.Collections.Generic.List<PhysXStepResult>();
+                for (int i = 0; i < 20; i++) plain.Add(session.Step(new float[14]));
+                option.SetValue(session, true);
+                session.Reset(2, true);
+                int contactEvents = 0;
+                for (int i = 0; i < 20; i++)
+                {
+                    var measured = session.Step(new float[14]);
+                    Assert.That(measured.jointPosition, Is.EqualTo(plain[i].jointPosition).Within(1e-6f));
+                    Assert.That(measured.rootPosition, Is.EqualTo(plain[i].rootPosition).Within(1e-6f));
+                    Assert.That(measured.policyObservation, Is.EqualTo(plain[i].policyObservation).Within(1e-6f));
+                    var trace = (System.Array)field.GetValue(measured);
+                    Assert.That(trace.Length, Is.EqualTo(4));
+                    for (int j = 0; j < 4; j++)
+                    {
+                        object sample = trace.GetValue(j);
+                        var type = sample.GetType();
+                        Assert.That(type.GetField("physicsSteps").GetValue(sample), Is.EqualTo(i * 4 + j + 1));
+                        contactEvents += ((System.Array)type.GetField("contacts").GetValue(sample)).Length;
+                        Assert.That(((float[])type.GetField("jointPosition").GetValue(sample)).Length, Is.EqualTo(14));
+                    }
+                }
+                Assert.That(contactEvents, Is.GreaterThan(0), "Actual ground contact callbacks were not recorded");
+            }
+        }
+
+        [UnityTest]
         public IEnumerator ExternalActorSeesTheSameScheduledCommandAsTheGameControlLoop()
         {
             yield return SceneManager.LoadSceneAsync("MicroDuckMvp", LoadSceneMode.Single);

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using AgenticRobot.Experiments;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -32,6 +34,7 @@ namespace AgenticRobot.MicroDuck
         public float upright;
         public bool healthy;
         public string fault;
+        public PhysXMicrostepResult[] physicsTrace = Array.Empty<PhysXMicrostepResult>();
     }
 
     public sealed class PhysXPolicySession : IDisposable
@@ -55,6 +58,8 @@ namespace AgenticRobot.MicroDuck
         private ExperimentCase experiment;
         private string experimentHash;
         private int nextEvent;
+        private readonly List<PhysXContactProbe> probes = new List<PhysXContactProbe>();
+        public bool RecordPhysicsTrace { get; set; }
         public MicroDuckDemoController Controller => controller;
 
         public PhysXPolicySession(MicroDuckDemoController controller)
@@ -123,13 +128,61 @@ namespace AgenticRobot.MicroDuck
             else if (action != null) throw new InvalidOperationException("Reset in external actor mode first");
             float now = steps * 0.005f;
             if (!controller.TickOnce(now)) throw new InvalidOperationException(controller.Fault);
+            var trace = RecordPhysicsTrace ? new PhysXMicrostepResult[4] : Array.Empty<PhysXMicrostepResult>();
+            if (RecordPhysicsTrace) EnsureProbes();
             for (int i = 0; i < 4; i++)
             {
+                foreach (var probe in probes) { probe.Recording = RecordPhysicsTrace; probe.BeginStep(); }
+                controller.SkillBall?.SetObservationTime((steps + 1) * 0.005f);
                 controller.ActiveRig.PreparePhysicsStep(0.005f);
                 scene.Simulate(0.005f);
                 steps++;
+                if (RecordPhysicsTrace) trace[i] = CaptureMicrostep();
             }
-            return Capture();
+            var result = Capture();
+            result.physicsTrace = trace;
+            return result;
+        }
+
+        private void EnsureProbes()
+        {
+            foreach (var body in controller.ActiveRig.GetComponentsInChildren<ArticulationBody>()) Attach(body.gameObject);
+            if (controller.SkillBall != null) Attach(controller.SkillBall.gameObject);
+        }
+
+        private void Attach(GameObject target)
+        {
+            if (probes.Any(item => item.gameObject == target)) return;
+            probes.Add(target.AddComponent<PhysXContactProbe>());
+        }
+
+        private PhysXMicrostepResult CaptureMicrostep()
+        {
+            var rig = controller.ActiveRig;
+            var root = rig.RootBody;
+            var q = new float[14];
+            var qd = new float[14];
+            rig.ReadPolicyState(q, qd, out _, out _);
+            var rotation = root.transform.rotation;
+            var jaw = rig.GetComponentsInChildren<Transform>().FirstOrDefault(item => item.name == "jaw_soft");
+            if (jaw == null) throw new InvalidOperationException("Cannot measure canonical mouth tip: missing jaw_soft");
+            var ball = controller.SkillBall;
+            return new PhysXMicrostepResult {
+                physicsSteps = steps, timeSeconds = steps * 0.005f,
+                inferenceSlot = controller.ActivePolicySlot,
+                rootPosition = Vector(root.transform.position),
+                rootRotation = new[] { rotation.x, rotation.y, rotation.z, rotation.w },
+                rootVelocity = Vector(root.velocity), rootAngularVelocity = Vector(root.angularVelocity),
+                jointPosition = q, jointVelocity = qd,
+                passiveWheelVelocity = rig.ReadPassiveWheelVelocityRadPerSecond(),
+                mouthTipPosition = Vector(jaw.TransformPoint(CoordinateBasis.MuJoCoToTuanjie(
+                    new Vector3(-0.00809334f, 0f, -0.0777383f)))),
+                ballActive = ball != null && ball.gameObject.activeInHierarchy,
+                ballPosition = ball == null ? Array.Empty<float>() : Vector(ball.Position),
+                ballVelocity = ball == null ? Array.Empty<float>() : Vector(ball.Velocity),
+                upright = Vector3.Dot(root.transform.up, Vector3.up),
+                contacts = probes.SelectMany(item => item.Snapshot()).ToArray(),
+            };
         }
 
         private PhysXStepResult Capture()
@@ -187,6 +240,12 @@ namespace AgenticRobot.MicroDuck
         }
 
         private static float[] Vector(Vector3 value) => new[] { value.x, value.y, value.z };
-        public void Dispose() { Physics.simulationMode = priorSimulation; }
+        public void Dispose()
+        {
+            foreach (var probe in probes) if (probe != null)
+            { probe.Recording = false; UnityEngine.Object.Destroy(probe); }
+            probes.Clear();
+            Physics.simulationMode = priorSimulation;
+        }
     }
 }
