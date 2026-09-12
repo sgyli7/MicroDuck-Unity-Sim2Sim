@@ -1,0 +1,19 @@
+name: Sai control contract
+on:
+  pull_request:
+    paths: ['TuanjieProject/Assets/SaiAgent001/**', 'tests/sai_contract_console/**', '.github/workflows/sai-contract.yml']
+  push:
+    branches: ['feat/sai-agent-001']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  portable-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet run --project tests/sai_contract_console -- tests/sai_contract_console/python-fixtures.json

@@ -8,7 +8,7 @@ import urllib.request
 import zipfile
 
 ROOT=Path(__file__).resolve().parents[1]
-PIN='8ea8348d95193c2bad91874816a76e5527238e30'
+PIN='6eb18b2abf97ce6de11a18daba93729848736adf'
 p=argparse.ArgumentParser()
 p.add_argument('--source',type=Path,help='Optional local Sai_Agent_001 checkout for development')
 a=p.parse_args()

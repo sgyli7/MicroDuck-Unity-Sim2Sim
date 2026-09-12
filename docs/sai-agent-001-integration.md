@@ -11,7 +11,7 @@ choose **SaiAgent001 → Build Demo**, then Play. W/S forward/reverse, A/D yaw, 
 Shift crouch, release to stand, R reset. Existing MicroDuck scenes and contracts
 remain unchanged.
 
-The setup command fetches Sai commit `8ea8348d95193c2bad91874816a76e5527238e30`,
+The setup command fetches Sai commit `6eb18b2abf97ce6de11a18daba93729848736adf`,
 checks the ONNX hash, stages licensed meshes and the articulated MJCF under
 StreamingAssets, and places the ONNX where Barracuda imports it. The native
 controller loads the display MJCF directly, retaining the same physical inertia, arm joints, cargo sliders
@@ -28,7 +28,7 @@ the native 1 ms model is stepped twenty times per policy update.
 
 ## Verified and pending
 
-- Setup from local package and ONNX integrity check passed.
+- Setup from the remote pinned GitHub package and ONNX integrity check passed.
 - The C# observation/target contract ran under .NET 8.0.425 against 64 Python
   fixtures. Maximum absolute error: 3.88e-7.
 - Source API calls checked against the project's pinned official MuJoCo binding.
@@ -37,6 +37,8 @@ the native 1 ms model is stepped twenty times per policy update.
   ARM machine. The draft PR remains unmerged pending these checks.
 - This scene currently provides the flat policy. The Sai package's 20/40 mm
   stair results are MuJoCo/Godot results, not Unity stair acceptance.
+- GitHub Actions repeats the portable contract test. A green result checks C#
+  numerical formulas, not Unity scene import or engine execution.
 
 Portable contract check:
 
