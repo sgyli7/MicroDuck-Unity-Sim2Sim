@@ -107,4 +107,18 @@ W/S, A/D, held/released Shift and R with real key events; inspect the four
 wheel legs, SO101, cargo and rear display against the approved CAD. The cargo
 pickup task has not yet been ported to the Unity component.
 
+For a Windows player, the same helper can build after the real editor physics
+test passes (the editor must have Windows build support installed):
+
+```sh
+python scripts/run-sai-editor-acceptance.py --editor "/absolute/path/to/editor" --build-windows
+```
+
+The executable is `Builds/SaiWindows64/Sai_Agent_001.exe`. The helper requires a
+fresh completion marker, verifies the built MuJoCo DLL against its supply-chain
+lock and records all build-file hashes. It does not mark player execution or
+keyboard/rendering verified. The standalone build entry point is
+**SaiAgent001 → Build Windows Player**. These build commands are prepared but
+have not run on this Linux ARM workstation.
+
 No hardware build, measured actuator performance, or completed VLA is claimed.
