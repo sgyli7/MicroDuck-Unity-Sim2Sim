@@ -56,9 +56,10 @@ the project's matching MuJoCo 3.12.0 binding/library.
   Unity keyboard input, Barracuda numerical parity or rendering.
 - Native compilation caught and fixed the generated binding's unsigned model
   counts in loops. The native ABI is checked before any struct dereference.
-- GitHub Actions repeats portable formulas plus native physical scenarios on
-  Linux and Windows. The current workflow result determines their status; a
-  green native check still does not mean Unity editor execution passed.
+- GitHub Actions passed portable formulas plus all twelve native physical
+  scenarios on Linux and Windows at commit `36fbee4`. See
+  [the recorded run](https://github.com/sgyli7/MicroDuck-Unity-Sim2Sim/actions/runs/34680326252).
+  A green native check does not mean Unity editor execution passed.
 
 Portable contract check:
 
@@ -79,5 +80,31 @@ dotnet run --project tests/sai_native_console -- .
 The helper checks the official binding SHA and writes the local native-library
 path under ignored `artifacts/`. No editor or global library replacement is
 performed. The result is `artifacts/sai-native-test/result.json`.
+
+On Windows and macOS the native acceptance helper now selects the actual
+project-bundled MuJoCo binary after checking `upstream.lock.json`; Linux uses
+the isolated Python package library. The runtime manifest records that choice.
+
+## Real editor acceptance entry point
+
+On a machine with the supported editor installed, after asset setup:
+
+```sh
+python scripts/run-sai-editor-acceptance.py --editor "/absolute/path/to/editor"
+```
+
+Alternatively choose **SaiAgent001 → Validate Physics and Barracuda** while
+not in Play mode. It loads the real imported ONNX models through the same
+`SaiBarracudaActor` as gameplay, then executes the same twelve physical cases
+and criteria as the native console. It does not change the current scene.
+The result and editor log are under `artifacts/sai-editor-test/`; stale results
+cannot satisfy the launcher. This entry point is prepared, **not yet run** on
+an actual Unity/Tuanjie editor in this task.
+
+The editor test uses programmatic commands, so it cannot claim keyboard or
+rendering acceptance. After it passes, Play each generated scene and check
+W/S, A/D, held/released Shift and R with real key events; inspect the four
+wheel legs, SO101, cargo and rear display against the approved CAD. The cargo
+pickup task has not yet been ported to the Unity component.
 
 No hardware build, measured actuator performance, or completed VLA is claimed.

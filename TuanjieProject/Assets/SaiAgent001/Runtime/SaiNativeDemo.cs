@@ -18,7 +18,7 @@ namespace SaiAgent001
         private SaiNativeWorld world;
         private MujocoLib.mjModel_* model => world==null?null:world.Model;
         private MujocoLib.mjData_* data => world==null?null:world.Data;
-        private Actor actor,stairActor;
+        private SaiBarracudaActor actor,stairActor;
         private readonly List<KeyValuePair<int,Transform>> visuals=new List<KeyValuePair<int,Transform>>();
         private readonly List<UnityEngine.Object> resources=new List<UnityEngine.Object>();
         private double vx,wz,requestedCrouch;
@@ -26,28 +26,6 @@ namespace SaiAgent001
         private string fault="";
         private Camera view;
 
-        private sealed class Actor : IDisposable
-        {
-            private readonly IWorker worker;
-            private readonly string inputName,outputName;
-            public Actor(NNModel policy)
-            {
-                var net=ModelLoader.Load(policy);
-                if(net.inputs.Count!=1 || net.outputs.Count!=1)throw new InvalidOperationException("Sai ONNX needs one input/output");
-                inputName=net.inputs[0].name;outputName=net.outputs[0];
-                worker=WorkerFactory.CreateWorker(WorkerFactory.Type.CSharpBurst,net);
-            }
-            public float[] Infer(float[] observation)
-            {
-                using(var input=new Tensor(1,82,observation,inputName))
-                {
-                    worker.Execute(input);var output=worker.PeekOutput(outputName);
-                    if(output.length!=16)throw new InvalidOperationException("Sai ONNX output is not 16D");
-                    var result=new float[16];for(int i=0;i<16;i++)result[i]=output[i];return result;
-                }
-            }
-            public void Dispose(){worker.Dispose();}
-        }
         private void Start()
         {
             previousFixedDelta=Time.fixedDeltaTime;
@@ -55,7 +33,7 @@ namespace SaiAgent001
             {
                 if(Policy==null || StairPolicy==null)throw new InvalidOperationException("Sai ONNX assets are not assigned; run SaiAgent001/Build Demo");
                 world=new SaiNativeWorld(Path.Combine(Application.streamingAssetsPath,ModelRelativePath));
-                actor=new Actor(Policy);stairActor=new Actor(StairPolicy);
+                actor=new SaiBarracudaActor(Policy);stairActor=new SaiBarracudaActor(StairPolicy);
                 Time.fixedDeltaTime=.02f;BuildVisuals();SyncVisuals();
                 view=Camera.main;
                 if(view==null){var c=new GameObject("Sai follow camera");view=c.AddComponent<Camera>();}

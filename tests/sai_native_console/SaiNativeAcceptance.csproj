@@ -10,5 +10,6 @@
     <Compile Include="$(MujocoBindingPath)" Link="MjBindings.cs" />
     <Compile Include="../../TuanjieProject/Assets/SaiAgent001/Runtime/SaiContract.cs" Link="SaiContract.cs" />
     <Compile Include="../../TuanjieProject/Assets/SaiAgent001/Runtime/SaiNativeWorld.cs" Link="SaiNativeWorld.cs" />
+    <Compile Include="../../TuanjieProject/Assets/SaiAgent001/Editor/SaiPhysicsAcceptance.cs" Link="SaiPhysicsAcceptance.cs" />
   </ItemGroup>
 </Project>

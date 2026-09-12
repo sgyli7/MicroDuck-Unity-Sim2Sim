@@ -45,4 +45,6 @@ jobs:
         if: always()
         with:
           name: sai-native-${{ matrix.os }}
-          path: artifacts/sai-native-test/result.json
+          path: |
+            artifacts/sai-native-test/result.json
+            artifacts/sai-native-test/runtime.json
