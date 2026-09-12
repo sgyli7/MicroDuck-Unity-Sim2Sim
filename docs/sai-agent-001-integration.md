@@ -26,24 +26,58 @@ leg joints use bounded PD position control; four wheels use bounded velocity
 feedback. Arm/cargo joints remain torque-controlled. The policy runs at 50 Hz;
 the native 1 ms model is stepped twenty times per policy update.
 
+**SaiAgent001 → Build Stairs** creates separate 20/40 mm ascent/descent scenes
+with four real risers and 180 mm treads. The native controller casts the same
+24 terrain rays as the Godot profile, excluding robot geometry. It selects the
+frozen stair actor, 3.2 s lift reference and slower forward speed when terrain
+height varies. The same bounded heading feedback is used for solver transfer.
+The sensing is simulated geometry, not camera-based VLA. Reverse/sideways stair
+driving and arbitrary terrain have not been accepted.
+
+`SaiNativeWorld.cs` owns model loading, ABI validation, reset, named-joint maps,
+height scans, policy timing and motor torque application. The Unity component
+supplies Barracuda inference and renders this world's actual geometry. A .NET
+acceptance executable uses the exact same world source with ONNX Runtime and
+the project's matching MuJoCo 3.12.0 binding/library.
+
 ## Verified and pending
 
 - Setup from the remote pinned GitHub package and ONNX integrity check passed.
-- The C# observation/target contract ran under .NET 8.0.425 against 64 Python
-  fixtures. Maximum absolute error: 3.88e-7.
+- The original 64 C# observation/target fixtures pass (maximum error 3.88e-7).
+  Additional fixtures cover stair phases, crouch, action limits and heading
+  state; the portable CI runs both sets.
 - Source API calls checked against the project's pinned official MuJoCo binding.
 - **Unity/Tuanjie editor execution, Barracuda ONNX parity and native rendered
   gameplay are not yet verified:** no editor is installed on the current Linux
   ARM machine. The draft PR remains unmerged pending these checks.
-- This scene currently provides the flat policy. The Sai package's 20/40 mm
-  stair results are MuJoCo/Godot results, not Unity stair acceptance.
-- GitHub Actions repeats the portable contract test. A green result checks C#
-  numerical formulas, not Unity scene import or engine execution.
+- The shared C# native world passed eight physical flat/crouch/reset cases and
+  four 20/40 mm stair ascent/descent cases on Linux ARM64. These are real
+  MuJoCo 3.12 physics steps with ONNX Runtime inference; they do not establish
+  Unity keyboard input, Barracuda numerical parity or rendering.
+- Native compilation caught and fixed the generated binding's unsigned model
+  counts in loops. The native ABI is checked before any struct dereference.
+- GitHub Actions repeats portable formulas plus native physical scenarios on
+  Linux and Windows. The current workflow result determines their status; a
+  green native check still does not mean Unity editor execution passed.
 
 Portable contract check:
 
 ```sh
 dotnet run --project tests/sai_contract_console -- tests/sai_contract_console/python-fixtures.json
+dotnet run --project tests/sai_contract_console -- tests/sai_contract_console/python-stair-fixtures.json
 ```
+
+For the native acceptance test, use a separate Python environment with
+`mujoco==3.12.0`, then run:
+
+```sh
+python scripts/setup-sai-agent.py
+python scripts/setup-sai-native-test.py
+dotnet run --project tests/sai_native_console -- .
+```
+
+The helper checks the official binding SHA and writes the local native-library
+path under ignored `artifacts/`. No editor or global library replacement is
+performed. The result is `artifacts/sai-native-test/result.json`.
 
 No hardware build, measured actuator performance, or completed VLA is claimed.

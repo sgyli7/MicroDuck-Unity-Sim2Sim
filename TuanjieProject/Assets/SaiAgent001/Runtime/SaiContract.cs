@@ -14,7 +14,7 @@ namespace SaiAgent001
         public static double Clamp(double x, double lo, double hi) => Math.Max(lo, Math.Min(hi, x));
 
         public static float[] Observe(double[] q, double[] v, double vx, double wz,
-            double crouch, float[] previous, double time, double[] heights)
+            double crouch, float[] previous, double time, double[] heights, double period=2.4)
         {
             if (q.Length != 23 || v.Length != 22 || previous.Length != 16 || heights.Length != 24)
                 throw new ArgumentException("Sai state shape mismatch");
@@ -31,7 +31,7 @@ namespace SaiAgent001
             for(int i=0;i<16;i++)if(i%4!=3)o[n++]=(float)(v[6+i]*.1);
             for(int i=0;i<4;i++)o[n++]=(float)(v[9+4*i]*(i%2==0?1:-1)*.1);
             for(int i=0;i<16;i++)o[n++]=previous[i];
-            o[n++]=(float)Math.Sin(time*2*Math.PI/2.4);o[n++]=(float)Math.Cos(time*2*Math.PI/2.4);
+            o[n++]=(float)Math.Sin(time*2*Math.PI/period);o[n++]=(float)Math.Cos(time*2*Math.PI/period);
             for(int i=0;i<24;i++)o[n++]=(float)Clamp((heights[i]-(q[2]-.2192))*5,-2,2);
             foreach(float value in o)if(float.IsNaN(value)||float.IsInfinity(value))throw new ArithmeticException("Non-finite observation");
             return o;
@@ -59,6 +59,54 @@ namespace SaiAgent001
                 t[4*leg+3]=side*((vx-wz*side*.146)/.048+6*action[4*leg+3]);
             }
             return t;
+        }
+
+        public static bool UseStairs(double vx,double[] heights)
+        {
+            if(heights.Length!=24)throw new ArgumentException("Sai height scan shape mismatch");
+            double lo=heights[0],hi=heights[0];
+            foreach(double h in heights){lo=Math.Min(lo,h);hi=Math.Max(hi,h);}
+            return hi-lo>.004 && vx>.015;
+        }
+
+        public static double[] StairTargets(float[] action,double vx,double wz,
+            double crouch,double time,double[] heights)
+        {
+            // Exact frozen stairs-dev40 reference; changes require a new policy contract.
+            var t=Targets(action,vx,wz,crouch);
+            double[] offsets={0,.5,.75,.25};bool active=UseStairs(vx,heights);
+            for(int leg=0;leg<4;leg++)
+            {
+                double side=leg%2==0?1:-1,front=leg<2?1:-1;
+                double phase=time/3.2-offsets[leg];phase-=Math.Floor(phase);
+                double lift=active && phase<.25?.055*Math.Pow(Math.Sin(Math.PI*phase/.25),2):0;
+                double dx=!active?0:phase<.25?-.025*Math.Cos(Math.PI*phase/.25):.05*(.5-(phase-.25)/.75);
+                double down=.172812737-.035*crouch-lift;
+                double beta=-front*Math.Acos(Clamp((down*down+dx*dx-.09*.09-.11*.11)/(2*.09*.11),-1,1));
+                double theta=Math.Atan2(dx,down)-Math.Atan2(.11*Math.Sin(beta),.09+.11*Math.Cos(beta));
+                double theta0=front*Math.Atan2(.05,.074833147);
+                double beta0=-front*(Math.Atan2(.05,.09797959)+Math.Atan2(.05,.074833147));
+                t[4*leg]=Clamp(.18*action[4*leg],-.45,.45);
+                t[4*leg+1]=Clamp(side*(theta0-theta)+.18*action[4*leg+1],-.7,.7);
+                t[4*leg+2]=Clamp(side*(beta0-beta)+.18*action[4*leg+2],-1.2,1.2);
+            }
+            return t;
+        }
+    }
+
+    public sealed class SaiHeadingHold
+    {
+        private double? desired;
+        public void Reset(){desired=null;}
+        public void Apply(double[] target,double vx,double wz,double yaw,double yawRate)
+        {
+            bool moving=Math.Sqrt(vx*vx+wz*wz)>=1e-5;
+            if(!desired.HasValue || !moving)desired=yaw;
+            if(!moving)return;
+            desired+=wz*.02;
+            double error=Math.Atan2(Math.Sin(desired.Value-yaw),Math.Cos(desired.Value-yaw));
+            double correction=SaiContract.Clamp(1.5*error-.25*(yawRate-wz),-.4,.4);
+            for(int leg=0;leg<4;leg++)target[4*leg+3]-=correction*.146/.048;
         }
     }
 }

@@ -13,12 +13,26 @@ class Program
         foreach(var row in doc.RootElement.GetProperty("cases").EnumerateArray())
         {
             var cmd=D(row,"command");double crouch=row.GetProperty("crouch").GetDouble();
-            var obs=SaiContract.Observe(D(row,"q"),D(row,"v"),cmd[0],cmd[1],crouch,F(row,"previous"),row.GetProperty("time").GetDouble(),D(row,"heights"));
-            var target=SaiContract.Targets(F(row,"action"),cmd[0],cmd[1],crouch);
+            bool stairs=row.TryGetProperty("stairs",out var s) && s.GetBoolean();
+            double time=row.GetProperty("time").GetDouble();var heights=D(row,"heights");
+            var obs=SaiContract.Observe(D(row,"q"),D(row,"v"),cmd[0],cmd[1],crouch,F(row,"previous"),time,heights,stairs?3.2:2.4);
+            var target=stairs?SaiContract.StairTargets(F(row,"action"),cmd[0],cmd[1],crouch,time,heights):SaiContract.Targets(F(row,"action"),cmd[0],cmd[1],crouch);
             var expected=D(row,"observation");var expectedTarget=D(row,"target");
             for(int i=0;i<82;i++)maximum=Math.Max(maximum,Math.Abs(obs[i]-expected[i]));
             for(int i=0;i<16;i++)maximum=Math.Max(maximum,Math.Abs(target[i]-expectedTarget[i]));
             n++;
+        }
+        if(doc.RootElement.TryGetProperty("heading_cases",out var headingRows))
+        {
+            var heading=new SaiHeadingHold();
+            foreach(var row in headingRows.EnumerateArray())
+            {
+                var cmd=D(row,"command");var target=D(row,"input_target");
+                heading.Apply(target,cmd[0],cmd[1],row.GetProperty("yaw").GetDouble(),row.GetProperty("yaw_rate").GetDouble());
+                var expected=D(row,"target");
+                for(int i=0;i<16;i++)maximum=Math.Max(maximum,Math.Abs(target[i]-expected[i]));
+                n++;
+            }
         }
         Console.WriteLine(JsonSerializer.Serialize(new{cases=n,maximum_absolute_error=maximum,passed=maximum<1e-5}));
         return maximum<1e-5?0:1;
