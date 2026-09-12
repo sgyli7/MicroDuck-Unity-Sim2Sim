@@ -14,8 +14,11 @@ remain unchanged.
 The setup command fetches Sai commit `8ea8348d95193c2bad91874816a76e5527238e30`,
 checks the ONNX hash, stages licensed meshes and the articulated MJCF under
 StreamingAssets, and places the ONNX where Barracuda imports it. The native
-controller loads that MJCF directly, retaining inertia, arm joints, cargo sliders
+controller loads the display MJCF directly, retaining the same physical inertia, arm joints, cargo sliders
 and belt equalities; Unity displays native geometry and native body motion.
+Display-only meshes have collisions disabled; contact geometry and all physical
+parameters match the original model. This preserves the actual blue cargo
+shell and SO101 geometry instead of displaying only collision proxies.
 There is no Unity Rigidbody simulation layered over the MuJoCo state.
 
 The flat actor observes 82 values and outputs sixteen residual actions. Twelve

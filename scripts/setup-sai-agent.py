@@ -36,7 +36,7 @@ else:
             if relative.startswith(prefixes) or relative in names:put(relative,z.read(member))
 # No reliance on a previous local test having produced the flat full model.
 import xml.etree.ElementTree as ET
-source=staging/'models/full/robot.xml';tree=ET.parse(source);world=tree.getroot().find('worldbody')
+source=staging/'models/full/visual.xml';tree=ET.parse(source);world=tree.getroot().find('worldbody')
 for body in list(world.findall('body')):
     if body.get('name')=='item':world.remove(body)
 for geom in list(world.findall('geom')):
