@@ -32,3 +32,11 @@ Recordings/
 # Local agent session state
 .codely-cli/
 .superpowers/
+
+# Sai generated package assets and demo scene
+TuanjieProject/Assets/SaiAgent001/Generated/
+TuanjieProject/Assets/StreamingAssets/SaiAgent001/
+tests/sai_contract_console/bin/
+tests/sai_contract_console/obj/
+tests/sai_native_console/bin/
+tests/sai_native_console/obj/

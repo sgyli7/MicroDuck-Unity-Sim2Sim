@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <MujocoBindingPath>../../artifacts/sai-native-test/MjBindings.cs</MujocoBindingPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.4" />
+    <Compile Include="$(MujocoBindingPath)" Link="MjBindings.cs" />
+    <Compile Include="../../TuanjieProject/Assets/SaiAgent001/Runtime/SaiContract.cs" Link="SaiContract.cs" />
+    <Compile Include="../../TuanjieProject/Assets/SaiAgent001/Runtime/SaiNativeWorld.cs" Link="SaiNativeWorld.cs" />
+    <Compile Include="../../TuanjieProject/Assets/SaiAgent001/Editor/SaiPhysicsAcceptance.cs" Link="SaiPhysicsAcceptance.cs" />
+  </ItemGroup>
+</Project>

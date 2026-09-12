@@ -1,0 +1,12 @@
+{
+  "name": "SaiAgent001.Editor",
+  "references": [
+    "SaiAgent001.Runtime",
+    "Unity.Barracuda",
+    "Mujoco.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "allowUnsafeCode": true
+}

@@ -1,0 +1,747 @@
+{
+  "suite": "shared-CSharp-native-physics-v1",
+  "native_version": 3012000,
+  "inference": "ONNX Runtime 1.24.4; Unity uses Barracuda and remains separately unverified",
+  "actual_unity_editor": false,
+  "physics_class": "SaiNativeWorld (same source as Unity component)",
+  "cases": [
+    {
+      "name": "stop",
+      "passed": true,
+      "checks": [
+        {
+          "name": "velocity",
+          "passed": true
+        },
+        {
+          "name": "yaw",
+          "passed": true
+        },
+        {
+          "name": "lateral",
+          "passed": true
+        },
+        {
+          "name": "upright",
+          "passed": true
+        },
+        {
+          "name": "parked",
+          "passed": true
+        },
+        {
+          "name": "reset",
+          "passed": true
+        }
+      ],
+      "final_xyz": [
+        0.00028865573283451315,
+        -2.2204281096405667e-06,
+        0.21909592676802958
+      ],
+      "velocity_mae": 1.9611702723523192e-06,
+      "yaw_mae": 2.8524745435097867e-06,
+      "lateral_mae": 6.913454179610645e-07,
+      "yaw_change": 5.183486589479333e-08,
+      "crouch_drop": 6.904299606816378e-05,
+      "recovery": 7.299352351161636e-05,
+      "min_upright": 0,
+      "max_lateral": 0,
+      "seconds": 0
+    },
+    {
+      "name": "W",
+      "passed": true,
+      "checks": [
+        {
+          "name": "velocity",
+          "passed": true
+        },
+        {
+          "name": "yaw",
+          "passed": true
+        },
+        {
+          "name": "lateral",
+          "passed": true
+        },
+        {
+          "name": "upright",
+          "passed": true
+        },
+        {
+          "name": "travel",
+          "passed": true
+        },
+        {
+          "name": "heading",
+          "passed": true
+        },
+        {
+          "name": "reset",
+          "passed": true
+        }
+      ],
+      "final_xyz": [
+        1.5844427352470998,
+        -0.14421998911293582,
+        0.22487306989664035
+      ],
+      "velocity_mae": 0.016060279927849863,
+      "yaw_mae": 0.053032124171615576,
+      "lateral_mae": 0.0056235343344342254,
+      "yaw_change": -0.07328539473027325,
+      "crouch_drop": 0.00039151588983890595,
+      "recovery": 0.0004820656866833528,
+      "min_upright": 0,
+      "max_lateral": 0,
+      "seconds": 0
+    },
+    {
+      "name": "S",
+      "passed": true,
+      "checks": [
+        {
+          "name": "velocity",
+          "passed": true
+        },
+        {
+          "name": "yaw",
+          "passed": true
+        },
+        {
+          "name": "lateral",
+          "passed": true
+        },
+        {
+          "name": "upright",
+          "passed": true
+        },
+        {
+          "name": "travel",
+          "passed": true
+        },
+        {
+          "name": "heading",
+          "passed": true
+        },
+        {
+          "name": "reset",
+          "passed": true
+        }
+      ],
+      "final_xyz": [
+        -1.8615922501751463,
+        -0.05851370030638921,
+        0.22441972941350138
+      ],
+      "velocity_mae": 0.013308478467464392,
+      "yaw_mae": 0.03765579310353496,
+      "lateral_mae": 0.001971369428086746,
+      "yaw_change": 0.06713478248793825,
+      "crouch_drop": 0.000879666626190434,
+      "recovery": 0.0010373763619738186,
+      "min_upright": 0,
+      "max_lateral": 0,
+      "seconds": 0
+    },
+    {
+      "name": "A",
+      "passed": true,
+      "checks": [
+        {
+          "name": "velocity",
+          "passed": true
+        },
+        {
+          "name": "yaw",
+          "passed": true
+        },
+        {
+          "name": "lateral",
+          "passed": true
+        },
+        {
+          "name": "upright",
+          "passed": true
+        },
+        {
+          "name": "turn",
+          "passed": true
+        },
+        {
+          "name": "center",
+          "passed": true
+        },
+        {
+          "name": "reset",
+          "passed": true
+        }
+      ],
+      "final_xyz": [
+        0.014695689580459323,
+        -0.014300231651079624,
+        0.22437077219371962
+      ],
+      "velocity_mae": 0.010751439590079827,
+      "yaw_mae": 0.05177281626462915,
+      "lateral_mae": 0.00508358058616659,
+      "yaw_change": 4.886245236292516,
+      "crouch_drop": 0.0004751672052613898,
+      "recovery": 0.0005494009381672438,
+      "min_upright": 0,
+      "max_lateral": 0,
+      "seconds": 0
+    },
+    {
+      "name": "D",
+      "passed": true,
+      "checks": [
+        {
+          "name": "velocity",
+          "passed": true
+        },
+        {
+          "name": "yaw",
+          "passed": true
+        },
+        {
+          "name": "lateral",
+          "passed": true
+        },
+        {
+          "name": "upright",
+          "passed": true
+        },
+        {
+          "name": "turn",
+          "passed": true
+        },
+        {
+          "name": "center",
+          "passed": true
+        },
+        {
+          "name": "reset",
+          "passed": true
+        }
+      ],
+      "final_xyz": [
+        0.05606619957710977,
+        0.018043199079424227,
+        0.22591696270240538
+      ],
+      "velocity_mae": 0.018960505161074254,
+      "yaw_mae": 0.04312081751823422,
+      "lateral_mae": 0.007406692811766675,
+      "yaw_change": -4.9406627712537805,
+      "crouch_drop": 0.0005208997328503828,
+      "recovery": 0.0006558208488630091,
+      "min_upright": 0,
+      "max_lateral": 0,
+      "seconds": 0
+    },
+    {
+      "name": "WA",
+      "passed": true,
+      "checks": [
+        {
+          "name": "velocity",
+          "passed": true
+        },
+        {
+          "name": "yaw",
+          "passed": true
+        },
+        {
+          "name": "lateral",
+          "passed": true
+        },
+        {
+          "name": "upright",
+          "passed": true
+        },
+        {
+          "name": "reset",
+          "passed": true
+        }
+      ],
+      "final_xyz": [
+        0.0017366508870688354,
+        0.8619676582466544,
+        0.224639550651085
+      ],
+      "velocity_mae": 0.01315857442200177,
+      "yaw_mae": 0.05884186502099059,
+      "lateral_mae": 0.005865114377244026,
+      "yaw_change": 3.2358056867129203,
+      "crouch_drop": 0.0004631952227800995,
+      "recovery": 0.0005416180338728427,
+      "min_upright": 0,
+      "max_lateral": 0,
+      "seconds": 0
+    },
+    {
+      "name": "shift",
+      "passed": true,
+      "checks": [
+        {
+          "name": "velocity",
+          "passed": true
+        },
+        {
+          "name": "yaw",
+          "passed": true
+        },
+        {
+          "name": "lateral",
+          "passed": true
+        },
+        {
+          "name": "upright",
+          "passed": true
+        },
+        {
+          "name": "parked",
+          "passed": true
+        },
+        {
+          "name": "crouch",
+          "passed": true
+        },
+        {
+          "name": "recovery",
+          "passed": true
+        },
+        {
+          "name": "reset",
+          "passed": true
+        }
+      ],
+      "final_xyz": [
+        0.00031129444696286455,
+        -1.0003481449768273e-06,
+        0.21909841043603762
+      ],
+      "velocity_mae": 5.929735260514235e-05,
+      "yaw_mae": 6.225316496108829e-06,
+      "lateral_mae": 1.9930875791836223e-06,
+      "yaw_change": -2.3358610010816335e-06,
+      "crouch_drop": 0.035697079037308926,
+      "recovery": 6.710670849413569e-05,
+      "min_upright": 0,
+      "max_lateral": 0,
+      "seconds": 0
+    },
+    {
+      "name": "W_shift",
+      "passed": true,
+      "checks": [
+        {
+          "name": "velocity",
+          "passed": true
+        },
+        {
+          "name": "yaw",
+          "passed": true
+        },
+        {
+          "name": "lateral",
+          "passed": true
+        },
+        {
+          "name": "upright",
+          "passed": true
+        },
+        {
+          "name": "crouch",
+          "passed": true
+        },
+        {
+          "name": "recovery",
+          "passed": true
+        },
+        {
+          "name": "reset",
+          "passed": true
+        }
+      ],
+      "final_xyz": [
+        1.4263242632748592,
+        0.04260267178378748,
+        0.22483166970225332
+      ],
+      "velocity_mae": 0.011756853627562479,
+      "yaw_mae": 0.04715535475350043,
+      "lateral_mae": 0.006967747687327574,
+      "yaw_change": -0.012441424464699303,
+      "crouch_drop": 0.03949583074154889,
+      "recovery": 0.0006180850293088236,
+      "min_upright": 0,
+      "max_lateral": 0,
+      "seconds": 0
+    },
+    {
+      "name": "stairs-20-up",
+      "passed": true,
+      "checks": [
+        {
+          "name": "all_wheels_cleared",
+          "passed": true
+        },
+        {
+          "name": "stopped_3s",
+          "passed": true
+        },
+        {
+          "name": "upright",
+          "passed": true
+        },
+        {
+          "name": "lane",
+          "passed": true
+        },
+        {
+          "name": "height",
+          "passed": true
+        },
+        {
+          "name": "supported",
+          "passed": true
+        },
+        {
+          "name": "no_fall",
+          "passed": true
+        }
+      ],
+      "final_xyz": [
+        1.1882365473689662,
+        0.14587357136384735,
+        0.2992694950374578
+      ],
+      "velocity_mae": 0,
+      "yaw_mae": 0,
+      "lateral_mae": 0,
+      "yaw_change": 0,
+      "crouch_drop": 0,
+      "recovery": 0,
+      "min_upright": 0.943894552148307,
+      "max_lateral": 0.14689940287663625,
+      "seconds": 12.199999999998678
+    },
+    {
+      "name": "stairs-20-down",
+      "passed": true,
+      "checks": [
+        {
+          "name": "all_wheels_cleared",
+          "passed": true
+        },
+        {
+          "name": "stopped_3s",
+          "passed": true
+        },
+        {
+          "name": "upright",
+          "passed": true
+        },
+        {
+          "name": "lane",
+          "passed": true
+        },
+        {
+          "name": "height",
+          "passed": true
+        },
+        {
+          "name": "supported",
+          "passed": true
+        },
+        {
+          "name": "no_fall",
+          "passed": true
+        }
+      ],
+      "final_xyz": [
+        1.2059548341018986,
+        -0.03157163583671933,
+        0.21929900050245657
+      ],
+      "velocity_mae": 0,
+      "yaw_mae": 0,
+      "lateral_mae": 0,
+      "yaw_change": 0,
+      "crouch_drop": 0,
+      "recovery": 0,
+      "min_upright": 0.9544883322168153,
+      "max_lateral": 0.04599113020734814,
+      "seconds": 11.21999999999922
+    },
+    {
+      "name": "stairs-40-up",
+      "passed": true,
+      "checks": [
+        {
+          "name": "all_wheels_cleared",
+          "passed": true
+        },
+        {
+          "name": "stopped_3s",
+          "passed": true
+        },
+        {
+          "name": "upright",
+          "passed": true
+        },
+        {
+          "name": "lane",
+          "passed": true
+        },
+        {
+          "name": "height",
+          "passed": true
+        },
+        {
+          "name": "supported",
+          "passed": true
+        },
+        {
+          "name": "no_fall",
+          "passed": true
+        }
+      ],
+      "final_xyz": [
+        1.2282858013329374,
+        -0.2234908667911956,
+        0.37933638757552585
+      ],
+      "velocity_mae": 0,
+      "yaw_mae": 0,
+      "lateral_mae": 0,
+      "yaw_change": 0,
+      "crouch_drop": 0,
+      "recovery": 0,
+      "min_upright": 0.8637158877630045,
+      "max_lateral": 0.22561116127730582,
+      "seconds": 19.560000000000922
+    },
+    {
+      "name": "stairs-40-down",
+      "passed": true,
+      "checks": [
+        {
+          "name": "all_wheels_cleared",
+          "passed": true
+        },
+        {
+          "name": "stopped_3s",
+          "passed": true
+        },
+        {
+          "name": "upright",
+          "passed": true
+        },
+        {
+          "name": "lane",
+          "passed": true
+        },
+        {
+          "name": "height",
+          "passed": true
+        },
+        {
+          "name": "supported",
+          "passed": true
+        },
+        {
+          "name": "no_fall",
+          "passed": true
+        }
+      ],
+      "final_xyz": [
+        1.1879107094638162,
+        0.06017773006687155,
+        0.21930239164250145
+      ],
+      "velocity_mae": 0,
+      "yaw_mae": 0,
+      "lateral_mae": 0,
+      "yaw_change": 0,
+      "crouch_drop": 0,
+      "recovery": 0,
+      "min_upright": 0.9442811248245397,
+      "max_lateral": 0.06246411510828413,
+      "seconds": 12.639999999998434
+    }
+  ],
+  "experimental": {
+    "suite": "shared-CSharp-experimental-stairs60-v1",
+    "native_version": 3012000,
+    "passed": true,
+    "cases": [
+      {
+        "name": "stairs-60-up",
+        "passed": true,
+        "checks": [
+          {
+            "name": "all_wheels_cleared",
+            "passed": true
+          },
+          {
+            "name": "stopped_3s",
+            "passed": true
+          },
+          {
+            "name": "upright",
+            "passed": true
+          },
+          {
+            "name": "lane",
+            "passed": true
+          },
+          {
+            "name": "height",
+            "passed": true
+          },
+          {
+            "name": "supported",
+            "passed": true
+          },
+          {
+            "name": "no_fall",
+            "passed": true
+          }
+        ],
+        "final_xyz": [
+          1.2572309755890674,
+          -0.10679359089831597,
+          0.4593079564017902
+        ],
+        "velocity_mae": 0,
+        "yaw_mae": 0,
+        "lateral_mae": 0,
+        "yaw_change": 0,
+        "crouch_drop": 0,
+        "recovery": 0,
+        "min_upright": 0.8667105089209027,
+        "max_lateral": 0.12029906856689951,
+        "seconds": 26.70000000000965
+      },
+      {
+        "name": "stairs-60-down",
+        "passed": true,
+        "checks": [
+          {
+            "name": "all_wheels_cleared",
+            "passed": true
+          },
+          {
+            "name": "stopped_3s",
+            "passed": true
+          },
+          {
+            "name": "upright",
+            "passed": true
+          },
+          {
+            "name": "lane",
+            "passed": true
+          },
+          {
+            "name": "height",
+            "passed": true
+          },
+          {
+            "name": "supported",
+            "passed": true
+          },
+          {
+            "name": "no_fall",
+            "passed": true
+          }
+        ],
+        "final_xyz": [
+          1.2099349774094643,
+          -0.06370817229096157,
+          0.20148605789808172
+        ],
+        "velocity_mae": 0,
+        "yaw_mae": 0,
+        "lateral_mae": 0,
+        "yaw_change": 0,
+        "crouch_drop": 0,
+        "recovery": 0,
+        "min_upright": 0.8955282310542778,
+        "max_lateral": 0.07599365626819306,
+        "seconds": 16.059999999996645
+      }
+    ]
+  },
+  "passed": true,
+  "source_sha256": {
+    "TuanjieProject/Assets/SaiAgent001/Runtime/SaiNativeWorld.cs": "b6c95f19fdea768fb52d8a3650a66a82ba183a99247d9886096e72a099e16dd0",
+    "TuanjieProject/Assets/SaiAgent001/Runtime/SaiContract.cs": "e211d7875759ed3ca3703d27d7fbb9e9c7710715e1a0b030ffbcd0842acf1aeb",
+    "TuanjieProject/Assets/SaiAgent001/Editor/SaiPhysicsAcceptance.cs": "84626de7df9b374432347cc994c5e3c8154378a9a9fe543489c1da56b49c69be"
+  },
+  "portable_contract": {
+    "flat_cases": 64,
+    "stairs_heading_cases": 320,
+    "maximum_absolute_error": 4.132588706795559e-07,
+    "passed": true
+  },
+  "package": {
+    "commit": "6eb18b2abf97ce6de11a18daba93729848736adf",
+    "local_override": true,
+    "actor_sha256": "1f9df39d6a034de77764df065cb7208e29143f569c882e84d7bded3caf5656f0",
+    "actors": {
+      "flat-v1": "1f9df39d6a034de77764df065cb7208e29143f569c882e84d7bded3caf5656f0",
+      "stairs-dev40": "0eca6930e7ccd3201023ce9dd0ce4b9cb0476a9490020da89802cac598b2e38d",
+      "ascent60": "501ad1f8e9b6131bc83b9e35012e6f1ad7bcaf7e5869352eefb636440f1e44f4",
+      "descent60": "821b2cededa8e204a850384b990828d8ac749a07580b6e4ddc563fd437089d57"
+    },
+    "courses": [
+      {
+        "file": "stairs-20-up.xml",
+        "riser": 0.02,
+        "descending": false,
+        "tread": 0.18,
+        "count": 4
+      },
+      {
+        "file": "stairs-20-down.xml",
+        "riser": 0.02,
+        "descending": true,
+        "tread": 0.18,
+        "count": 4
+      },
+      {
+        "file": "stairs-40-up.xml",
+        "riser": 0.04,
+        "descending": false,
+        "tread": 0.18,
+        "count": 4
+      },
+      {
+        "file": "stairs-40-down.xml",
+        "riser": 0.04,
+        "descending": true,
+        "tread": 0.18,
+        "count": 4
+      },
+      {
+        "file": "stairs-60-up.xml",
+        "riser": 0.06,
+        "descending": false,
+        "tread": 0.18,
+        "count": 4
+      },
+      {
+        "file": "stairs-60-down.xml",
+        "riser": 0.06,
+        "descending": true,
+        "tread": 0.18,
+        "count": 4
+      }
+    ]
+  }
+}
