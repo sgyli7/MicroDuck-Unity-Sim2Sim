@@ -10,7 +10,7 @@ import copy
 import hashlib
 
 ROOT=Path(__file__).resolve().parents[1]
-PIN='6eb18b2abf97ce6de11a18daba93729848736adf'
+PIN='5d2ab070dcdbae61a8d750a3f812e77ad2568f26'
 p=argparse.ArgumentParser()
 p.add_argument('--source',type=Path,help='Optional local Sai_Agent_001 checkout for development')
 a=p.parse_args()
@@ -18,6 +18,7 @@ staging=ROOT/'TuanjieProject/Assets/StreamingAssets/SaiAgent001'
 policy=ROOT/'TuanjieProject/Assets/SaiAgent001/Generated/flat-v1.onnx'
 prefixes=('models/full/','licenses/')
 names=('policies/flat-v1.onnx','policies/flat-v1.json','policies/stairs-dev40.onnx','policies/stairs-dev40.json','THIRD_PARTY_NOTICES.md','LICENSE')
+names+=tuple(f'policies/experimental/{name}.{ext}' for name in ['ascent60','descent60'] for ext in ['json','onnx'])
 def put(relative,data):
     if relative.startswith('policies/') and relative.endswith('.onnx'):destination=policy.parent/Path(relative).name
     else:destination=staging/relative
@@ -51,7 +52,7 @@ for geom in tree.findall('.//geom'):geom.set('group','0')
 world.find("geom[@name='ground']").set('group','5')
 tree.write(staging/'models/full/locomotion-articulated.xml',encoding='unicode')
 courses=[]
-for riser in [.02,.04]:
+for riser in [.02,.04,.06]:
     for descending in [False,True]:
         course=copy.deepcopy(tree);cw=course.getroot().find('worldbody')
         cw.find("geom[@name='ground']").set('pos','0 0 -.002')
@@ -67,11 +68,19 @@ for riser in [.02,.04]:
         course.write(staging/'models/full'/name,encoding='unicode')
         courses.append(dict(file=name,riser=riser,descending=descending,tread=.18,count=4))
 hashes={}
-for name in ['flat-v1','stairs-dev40']:
-    metadata=json.loads((staging/'policies'/f'{name}.json').read_text())
+for name in ['flat-v1','stairs-dev40','ascent60','descent60']:
+    folder=staging/'policies'/('experimental' if name in ['ascent60','descent60'] else '')
+    metadata=json.loads((folder/f'{name}.json').read_text())
     digest=hashlib.sha256((policy.parent/f'{name}.onnx').read_bytes()).hexdigest()
     expected=metadata.get('onnx_sha256',metadata.get('sha256'))
     if digest!=expected:raise ValueError(f'{name} actor integrity check failed')
+    if name in ['ascent60','descent60']:
+        down=name=='descent60'
+        expected_control=dict(speed=.08,lift_height=.055 if down else .07,leg_scale=.18 if down else .45,
+            min_crouch=.5 if down else 0.,route_center_y=0. if down else None,
+            motion_phase_start_seconds=.5,yaw_correction_limit=.6 if down else .4)
+        actual={'yaw_correction_limit':.4,**metadata['control']}
+        if actual!=expected_control:raise ValueError(f'{name} settings differ from SaiStairControl; update and validate the shared contract first')
     hashes[name]=digest
 (staging/'package-pin.json').write_text(json.dumps({'commit':PIN,'local_override':a.source is not None,'actor_sha256':hashes['flat-v1'],'actors':hashes,'courses':courses},indent=2)+'\n')
 print('Sai model and policy staged. Open TuanjieProject, choose SaiAgent001/Build Demo, then Play.')

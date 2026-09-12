@@ -37,11 +37,14 @@ unsafe class Program
         string policies=Path.Combine(root,"TuanjieProject/Assets/SaiAgent001/Generated");
         using var flat=new Actor(Path.Combine(policies,"flat-v1.onnx"));
         using var stair=new Actor(Path.Combine(policies,"stairs-dev40.onnx"));
+        using var ascent=new Actor(Path.Combine(policies,"ascent60.onnx"));
+        using var descent=new Actor(Path.Combine(policies,"descent60.onnx"));
         float[] Infer(float[] obs,bool stairs)=>(stairs?stair:flat).Infer(obs);
         var physical=SaiAgent001.Editor.SaiPhysicsAcceptance.Run(models,Infer,row=>Console.WriteLine(JsonSerializer.Serialize(row,new JsonSerializerOptions{IncludeFields=true})));
-        var result=new{suite=physical.suite,native_version=physical.native_version,inference="ONNX Runtime 1.24.4; Unity uses Barracuda and remains separately unverified",actual_unity_editor=false,physics_class="SaiNativeWorld (same source as Unity component)",cases=physical.cases,passed=physical.passed};
+        var experimental=SaiAgent001.Editor.SaiPhysicsAcceptance.RunExperimental(models,(obs,name)=>(name=="ascent60"?ascent:name=="descent60"?descent:flat).Infer(obs),row=>Console.WriteLine(JsonSerializer.Serialize(row,new JsonSerializerOptions{IncludeFields=true})));
+        var result=new{suite=physical.suite,native_version=physical.native_version,inference="ONNX Runtime 1.24.4; Unity uses Barracuda and remains separately unverified",actual_unity_editor=false,physics_class="SaiNativeWorld (same source as Unity component)",cases=physical.cases,experimental=experimental,passed=physical.passed && experimental.passed};
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outPath)));
         File.WriteAllText(outPath,JsonSerializer.Serialize(result,new JsonSerializerOptions{WriteIndented=true,IncludeFields=true})+"\n");
-        return physical.passed?0:1;
+        return result.passed?0:1;
     }
 }

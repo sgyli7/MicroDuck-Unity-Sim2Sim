@@ -70,26 +70,42 @@ namespace SaiAgent001.Editor
             }
             foreach(int mm in new[]{20,40})foreach(bool down in new[]{false,true})
             {
-                string name=$"stairs-{mm}-{(down?"down":"up")}";
-                using var world=new SaiNativeWorld(Path.Combine(models,name+".xml"));
-                double cleared=-1,minimumUp=1,maxY=0;var support=new Queue<int>();
-                for(int k=0;k<1500;k++)
-                {
-                    world.Step(k>=25 && cleared<0?.12:0,0,0,Infer);
-                    minimumUp=Math.Min(minimumUp,Upright(world.Q));maxY=Math.Max(maxY,Math.Abs(world.Q[1]));
-                    support.Enqueue(world.WheelContacts());if(support.Count>50)support.Dequeue();
-                    if(cleared<0 && world.WheelPositions().Min(p=>p[0])>1.07)cleared=world.Data->time;
-                    if(Upright(world.Q)<.6 || (cleared>=0 && world.Data->time-cleared>=3))break;
-                }
-                double finalHeight=.2192+(down?0:4*mm*.001);
-                var checks=new Dictionary<string,bool>{{"all_wheels_cleared",world.WheelPositions().Min(p=>p[0])>1.04},
-                    {"stopped_3s",cleared>=0 && world.Data->time-cleared>=3},{"upright",Upright(world.Q)>.9},
-                    {"lane",maxY<.3},{"height",Math.Abs(world.Q[2]-finalHeight)<.02},
-                    {"supported",support.Count==50 && support.Count(n=>n==4)>35},{"no_fall",minimumUp>.6}};
-                bool ok=checks.Values.All(x=>x);passed&=ok;
-                var row=new CaseResult{name=name,passed=ok,checks=Checks(checks),final_xyz=world.Q.Take(3).ToArray(),min_upright=minimumUp,max_lateral=maxY,seconds=world.Data->time};cases.Add(row);report?.Invoke(row);
+                var row=RunStair(models,mm,down,new SaiStairControl(),30,Infer);
+                cases.Add(row);passed&=row.passed;report?.Invoke(row);
             }
             return new Result{native_version=MujocoLib.mj_version(),cases=cases.ToArray(),passed=passed};
+        }
+        public static Result RunExperimental(string models,Func<float[],string,float[]> infer,Action<CaseResult> report=null)
+        {
+            var cases=new List<CaseResult>();
+            foreach(bool down in new[]{false,true})
+            {
+                string actor=down?"descent60":"ascent60";
+                var row=RunStair(models,60,down,down?SaiStairControl.Descent60():SaiStairControl.Ascent60(),45,
+                    (obs,stairs)=>infer(obs,stairs?actor:"flat-v1"));
+                cases.Add(row);report?.Invoke(row);
+            }
+            return new Result{suite="shared-CSharp-experimental-stairs60-v1",native_version=MujocoLib.mj_version(),cases=cases.ToArray(),passed=cases.All(c=>c.passed)};
+        }
+        static CaseResult RunStair(string models,int mm,bool down,SaiStairControl controls,int seconds,Func<float[],bool,float[]> infer)
+        {
+            string name=$"stairs-{mm}-{(down?"down":"up")}";
+            using var world=new SaiNativeWorld(Path.Combine(models,name+".xml"),controls);
+            double cleared=-1,minimumUp=1,maxY=0;var support=new Queue<int>();
+            for(int k=0;k<seconds*50;k++)
+            {
+                world.Step(k>=25 && cleared<0?controls.Speed:0,0,0,infer);
+                minimumUp=Math.Min(minimumUp,Upright(world.Q));maxY=Math.Max(maxY,Math.Abs(world.Q[1]));
+                support.Enqueue(world.WheelContacts());if(support.Count>50)support.Dequeue();
+                if(cleared<0 && world.WheelPositions().Min(p=>p[0])>1.07)cleared=world.Data->time;
+                if(Upright(world.Q)<.6 || (cleared>=0 && world.Data->time-cleared>=3))break;
+            }
+            double finalHeight=.2192+(down?0:4*mm*.001)-.035*world.Crouch;
+            var checks=new Dictionary<string,bool>{{"all_wheels_cleared",world.WheelPositions().Min(p=>p[0])>1.04},
+                {"stopped_3s",cleared>=0 && world.Data->time-cleared>=3},{"upright",Upright(world.Q)>.9},
+                {"lane",maxY<.3},{"height",Math.Abs(world.Q[2]-finalHeight)<.02},
+                {"supported",support.Count==50 && support.Count(n=>n==4)>35},{"no_fall",minimumUp>.6}};
+            return new CaseResult{name=name,passed=checks.Values.All(x=>x),checks=Checks(checks),final_xyz=world.Q.Take(3).ToArray(),min_upright=minimumUp,max_lateral=maxY,seconds=world.Data->time};
         }
         static double Yaw(double[] q)=>Math.Atan2(2*(q[3]*q[6]+q[4]*q[5]),1-2*(q[5]*q[5]+q[6]*q[6]));
         static double Upright(double[] q)=>1-2*(q[4]*q[4]+q[5]*q[5]);

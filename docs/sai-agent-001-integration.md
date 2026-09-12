@@ -122,3 +122,26 @@ keyboard/rendering verified. The standalone build entry point is
 have not run on this Linux ARM workstation.
 
 No hardware build, measured actuator performance, or completed VLA is claimed.
+
+
+## Experimental 60 mm profiles (alpha.3)
+
+The setup script additionally stages hash-checked `ascent60` (trial 008) and
+`descent60` (trial 011) actors and matching four-riser scenes. Use
+**SaiAgent001 → Build Experimental Stairs → 60 mm up/down**. These explicit
+choices pair the actor with its speed, gait scale, crouch, phase and heading
+settings; the original 20/40 mm scenes retain their original controls.
+
+The actual shared C# world passes the original twelve cases plus both nominal
+60 mm cases locally: ascent 26.70 s and descent 16.06 s, including the final
+three-second stop. The experimental budget is 45 s; this does not erase the
+older 30 s CPU ascent timeout. The portable contract now passes 64 flat plus
+320 stair/heading fixtures, maximum difference 4.14e-7. See
+[specific evidence](sai-native-experimental60-evidence.json).
+
+The real editor acceptance command now requires twelve base cases and both
+experimental cases. Its editor/Barracuda execution, real keys, rendered scene
+and Windows player still require a supported editor host. No such editor is
+installed or connected in the current environment; native .NET acceptance is
+not presented as editor acceptance. Cargo remains available in the Godot path,
+not in this Unity locomotion demo.

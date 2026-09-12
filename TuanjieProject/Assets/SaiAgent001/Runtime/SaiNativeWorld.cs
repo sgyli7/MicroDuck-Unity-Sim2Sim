@@ -20,10 +20,13 @@ namespace SaiAgent001
         private readonly int[] qa=new int[16],va=new int[16],aa=new int[16];
         private readonly int[] hq=new int[7],hv=new int[7],ha=new int[7],wheels=new int[4];
         private readonly SaiHeadingHold heading=new SaiHeadingHold();
+        private readonly SaiStairControl stairControl;
+        private double? motionOrigin;
         private int substeps;
 
-        public SaiNativeWorld(string modelPath)
+        public SaiNativeWorld(string modelPath,SaiStairControl stairControl=null)
         {
+            this.stairControl=stairControl??new SaiStairControl();this.stairControl.Validate();
             // Check ABI before dereferencing native structs from this generated binding.
             int version=MujocoLib.mj_version();
             if(version!=MujocoLib.mjVERSION_HEADER)
@@ -62,7 +65,7 @@ namespace SaiAgent001
         public void Reset()
         {
             MujocoLib.mj_resetData(Model,Data);MujocoLib.mj_forward(Model,Data);
-            Action=new float[16];Observation=new float[82];Crouch=0;OnStairs=false;heading.Reset();ReadState();
+            Action=new float[16];Observation=new float[82];Crouch=0;OnStairs=false;motionOrigin=null;heading.Reset();ReadState();
         }
         private void ReadState()
         {
@@ -95,13 +98,16 @@ namespace SaiAgent001
         {
             if(double.IsNaN(vx+wz+requestedCrouch)||double.IsInfinity(vx+wz+requestedCrouch))throw new ArithmeticException("Non-finite command");
             ReadState();var heights=HeightScan();OnStairs=SaiContract.UseStairs(vx,heights);
-            if(OnStairs)vx=Math.Min(vx,.12);
-            Crouch+=SaiContract.Clamp(SaiContract.Clamp(requestedCrouch,0,1)-Crouch,-.04,.04);
-            Observation=SaiContract.Observe(Q,V,vx,wz,Crouch,Action,Data->time,heights,OnStairs?3.2:2.4);
+            if(OnStairs)vx=Math.Min(vx,stairControl.Speed);
+            if(vx<=.015)motionOrigin=null;else if(!motionOrigin.HasValue)motionOrigin=Data->time;
+            double phaseTime=OnStairs && stairControl.MotionRelativePhase?Data->time-motionOrigin.Value+stairControl.PhaseStart:Data->time;
+            Crouch+=SaiContract.Clamp(SaiContract.Clamp(Math.Max(requestedCrouch,stairControl.MinCrouch),0,1)-Crouch,-.04,.04);
+            Observation=SaiContract.Observe(Q,V,vx,wz,Crouch,Action,phaseTime,heights,OnStairs?3.2:2.4);
             Action=infer(Observation,OnStairs);
-            var target=OnStairs?SaiContract.StairTargets(Action,vx,wz,Crouch,Data->time,heights):SaiContract.Targets(Action,vx,wz,Crouch);
+            var target=OnStairs?SaiContract.StairTargets(Action,vx,wz,Crouch,phaseTime,heights,stairControl.LiftHeight,stairControl.LegScale):SaiContract.Targets(Action,vx,wz,Crouch);
             double yaw=Math.Atan2(2*(Q[3]*Q[6]+Q[4]*Q[5]),1-2*(Q[5]*Q[5]+Q[6]*Q[6]));
-            if(HeadingControl)heading.Apply(target,vx,wz,yaw,V[5]);
+            double? route=OnStairs && stairControl.RouteSteering && Math.Abs(wz)<1e-5?(double?)SaiContract.Clamp(Math.Atan2(stairControl.RouteCenterY-Q[1],.5),-.4,.4):null;
+            if(HeadingControl)heading.Apply(target,vx,wz,yaw,V[5],stairControl.HeadingCorrection,route);
             for(int s=0;s<substeps;s++)
             {
                 for(int i=0;i<16;i++)Data->ctrl[aa[i]]=i%4==3

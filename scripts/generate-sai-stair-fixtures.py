@@ -19,11 +19,22 @@ for i in range(96):
     rows.append(dict(q=q.tolist(),v=v.tolist(),command=command.tolist(),crouch=crouch,previous=previous.tolist(),action=action.tolist(),time=t,heights=heights.tolist(),stairs=True,
         observation=observation_numpy(q,v,command,crouch,previous,t*2*np.pi/3.2,heights).tolist(),
         target=targets_stairs_numpy(action,command,crouch,t/3.2,heights).tolist()))
+for row in list(rows):
+    extra=dict(row,lift_height=.07,leg_scale=.45)
+    extra['target']=targets_stairs_numpy(np.array(row['action']),row['command'],row['crouch'],row['time']/3.2,np.array(row['heights']),.07,.45).tolist()
+    rows.append(extra)
 heading=HeadingHold();heading_rows=[]
 for i in range(64):
     command=np.zeros(2) if i%10==0 else np.array([.16,.3 if i%2 else -.3])
     target=rng.normal(0,1,16);yaw=float(rng.uniform(-3.5,3.5));rate=float(rng.normal())
     heading_rows.append(dict(command=command.tolist(),input_target=target.tolist(),yaw=yaw,yaw_rate=rate,target=heading.apply(target,command,yaw,rate).tolist()))
+heading.max_correction=.6
+for i in range(64):
+    command=np.zeros(2) if i%10==0 else np.array([.08,0. if i%2 else .3])
+    target=rng.normal(0,1,16);yaw=float(rng.uniform(-3.5,3.5));rate=float(rng.normal())
+    desired=float(rng.uniform(-.4,.4)) if command[0]>.015 and command[1]==0 else None
+    if desired is not None:heading.desired=desired
+    heading_rows.append(dict(command=command.tolist(),input_target=target.tolist(),yaw=yaw,yaw_rate=rate,max_correction=.6,desired_heading=desired,target=heading.apply(target,command,yaw,rate).tolist()))
 out=Path(__file__).resolve().parents[1]/'tests/sai_contract_console/python-stair-fixtures.json'
 out.write_text(json.dumps(dict(reference='Sai frozen stair reference and heading controller',source_sha256=hashlib.sha256((a.sai_source/'src/sai_agent/control.py').read_bytes()).hexdigest(),cases=rows,heading_cases=heading_rows),separators=(',',':'))+'\n')
 print(out)

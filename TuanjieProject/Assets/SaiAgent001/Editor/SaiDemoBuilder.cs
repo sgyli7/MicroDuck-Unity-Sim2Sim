@@ -21,6 +21,10 @@ namespace SaiAgent001.Editor
         public static void Stairs40Up(){BuildScene("stairs-40-up.xml","SaiStairs40Up");}
         [MenuItem("SaiAgent001/Build Stairs/40 mm down")]
         public static void Stairs40Down(){BuildScene("stairs-40-down.xml","SaiStairs40Down");}
+        [MenuItem("SaiAgent001/Build Experimental Stairs/60 mm up")]
+        public static void Stairs60Up(){BuildScene("stairs-60-up.xml","SaiStairs60Up","ascent60",SaiStairControl.Ascent60());}
+        [MenuItem("SaiAgent001/Build Experimental Stairs/60 mm down")]
+        public static void Stairs60Down(){BuildScene("stairs-60-down.xml","SaiStairs60Down","descent60",SaiStairControl.Descent60());}
         [MenuItem("SaiAgent001/Build Windows Player")]
         public static void BuildWindows64()
         {
@@ -39,11 +43,11 @@ namespace SaiAgent001.Editor
             File.WriteAllText(Path.Combine(evidence,"windows-build.completed"),System.DateTime.UtcNow.ToString("o"));
             Debug.Log("Sai Windows Player built: "+destination);
         }
-        private static bool BuildScene(string modelName,string sceneName)
+        private static bool BuildScene(string modelName,string sceneName,string stairName="stairs-dev40",SaiStairControl controls=null)
         {
             string model=Path.Combine(Application.streamingAssetsPath,"SaiAgent001/models/full/"+modelName);
             string actor="Assets/SaiAgent001/Generated/flat-v1.onnx";
-            string stairActor="Assets/SaiAgent001/Generated/stairs-dev40.onnx";
+            string stairActor="Assets/SaiAgent001/Generated/"+stairName+".onnx";
             if(!File.Exists(model)||!File.Exists(actor)||!File.Exists(stairActor))
                 throw new FileNotFoundException("Run python scripts/setup-sai-agent.py from the repository root first.");
             AssetDatabase.Refresh();
@@ -55,6 +59,7 @@ namespace SaiAgent001.Editor
             var controller=new GameObject("Sai_Agent_001").AddComponent<SaiNativeDemo>();
             controller.Policy=policy;
             controller.StairPolicy=stairPolicy;
+            controller.StairControl=controls??new SaiStairControl();
             controller.ModelRelativePath="SaiAgent001/models/full/"+modelName;
             Directory.CreateDirectory("Assets/SaiAgent001/Generated");
             if(!EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(),"Assets/SaiAgent001/Generated/"+sceneName+".unity"))

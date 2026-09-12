@@ -14,6 +14,7 @@ namespace SaiAgent001
     {
         public NNModel Policy;
         public NNModel StairPolicy;
+        public SaiStairControl StairControl=new SaiStairControl();
         public string ModelRelativePath="SaiAgent001/models/full/locomotion-articulated.xml";
         private SaiNativeWorld world;
         private MujocoLib.mjModel_* model => world==null?null:world.Model;
@@ -32,7 +33,7 @@ namespace SaiAgent001
             try
             {
                 if(Policy==null || StairPolicy==null)throw new InvalidOperationException("Sai ONNX assets are not assigned; run SaiAgent001/Build Demo");
-                world=new SaiNativeWorld(Path.Combine(Application.streamingAssetsPath,ModelRelativePath));
+                world=new SaiNativeWorld(Path.Combine(Application.streamingAssetsPath,ModelRelativePath),StairControl);
                 actor=new SaiBarracudaActor(Policy);stairActor=new SaiBarracudaActor(StairPolicy);
                 Time.fixedDeltaTime=.02f;BuildVisuals();SyncVisuals();
                 view=Camera.main;

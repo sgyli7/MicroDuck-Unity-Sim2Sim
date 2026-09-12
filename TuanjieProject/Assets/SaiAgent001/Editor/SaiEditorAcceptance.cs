@@ -15,6 +15,7 @@ namespace SaiAgent001.Editor
             public bool actual_unity_editor=true;
             public bool keyboard_input_verified=false, rendering_verified=false, passed=false;
             public SaiPhysicsAcceptance.Result physical;
+            public SaiPhysicsAcceptance.Result experimental;
         }
 
         // Safe to run in an existing editor: does not replace or save its scene.
@@ -35,11 +36,16 @@ namespace SaiAgent001.Editor
                 string models=Path.Combine(Application.streamingAssetsPath,"SaiAgent001/models/full");
                 using(var flatActor=new SaiBarracudaActor(flat))
                 using(var stairActor=new SaiBarracudaActor(stairs))
+                using(var ascentActor=new SaiBarracudaActor(Load("ascent60")))
+                using(var descentActor=new SaiBarracudaActor(Load("descent60")))
                 {
                     report.physical=SaiPhysicsAcceptance.Run(models,
                         (obs,onStairs)=>(onStairs?stairActor:flatActor).Infer(obs),
                         row=>Debug.Log("Sai acceptance: "+JsonUtility.ToJson(row)));
-                    report.passed=report.physical.passed;
+                    report.experimental=SaiPhysicsAcceptance.RunExperimental(models,
+                        (obs,name)=>(name=="ascent60"?ascentActor:name=="descent60"?descentActor:flatActor).Infer(obs),
+                        row=>Debug.Log("Sai experimental acceptance: "+JsonUtility.ToJson(row)));
+                    report.passed=report.physical.passed && report.experimental.passed;
                 }
             }
             catch(Exception exception)

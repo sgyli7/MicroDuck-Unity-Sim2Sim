@@ -48,8 +48,10 @@ def main():
         return 1
     report = json.loads(result.read_text())
     physical = report.get("physical") or {}
+    experimental = report.get("experimental") or {}
     passed = report.get("actual_unity_editor") is True and report.get("passed") is True
     passed &= physical.get("passed") is True and len(physical.get("cases", [])) == 12
+    passed &= experimental.get("passed") is True and len(experimental.get("cases", [])) == 2
     if passed and args.build_windows:
         build_marker = output / "windows-build.completed"
         if build_marker.exists():

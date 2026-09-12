@@ -70,25 +70,26 @@ namespace SaiAgent001
         }
 
         public static double[] StairTargets(float[] action,double vx,double wz,
-            double crouch,double time,double[] heights)
+            double crouch,double time,double[] heights,double liftHeight=.055,double legScale=.18)
         {
-            // Exact frozen stairs-dev40 reference; changes require a new policy contract.
+            // Defaults are the frozen stairs-dev40 reference. Experimental actors
+            // supply their separately recorded lift and residual scale.
             var t=Targets(action,vx,wz,crouch);
             double[] offsets={0,.5,.75,.25};bool active=UseStairs(vx,heights);
             for(int leg=0;leg<4;leg++)
             {
                 double side=leg%2==0?1:-1,front=leg<2?1:-1;
                 double phase=time/3.2-offsets[leg];phase-=Math.Floor(phase);
-                double lift=active && phase<.25?.055*Math.Pow(Math.Sin(Math.PI*phase/.25),2):0;
+                double lift=active && phase<.25?liftHeight*Math.Pow(Math.Sin(Math.PI*phase/.25),2):0;
                 double dx=!active?0:phase<.25?-.025*Math.Cos(Math.PI*phase/.25):.05*(.5-(phase-.25)/.75);
                 double down=.172812737-.035*crouch-lift;
                 double beta=-front*Math.Acos(Clamp((down*down+dx*dx-.09*.09-.11*.11)/(2*.09*.11),-1,1));
                 double theta=Math.Atan2(dx,down)-Math.Atan2(.11*Math.Sin(beta),.09+.11*Math.Cos(beta));
                 double theta0=front*Math.Atan2(.05,.074833147);
                 double beta0=-front*(Math.Atan2(.05,.09797959)+Math.Atan2(.05,.074833147));
-                t[4*leg]=Clamp(.18*action[4*leg],-.45,.45);
-                t[4*leg+1]=Clamp(side*(theta0-theta)+.18*action[4*leg+1],-.7,.7);
-                t[4*leg+2]=Clamp(side*(beta0-beta)+.18*action[4*leg+2],-1.2,1.2);
+                t[4*leg]=Clamp(legScale*action[4*leg],-.45,.45);
+                t[4*leg+1]=Clamp(side*(theta0-theta)+legScale*action[4*leg+1],-.7,.7);
+                t[4*leg+2]=Clamp(side*(beta0-beta)+legScale*action[4*leg+2],-1.2,1.2);
             }
             return t;
         }
@@ -98,15 +99,32 @@ namespace SaiAgent001
     {
         private double? desired;
         public void Reset(){desired=null;}
-        public void Apply(double[] target,double vx,double wz,double yaw,double yawRate)
+        public void Apply(double[] target,double vx,double wz,double yaw,double yawRate,double maxCorrection=.4,double? desiredHeading=null)
         {
+            if(desiredHeading.HasValue)desired=desiredHeading;
             bool moving=Math.Sqrt(vx*vx+wz*wz)>=1e-5;
             if(!desired.HasValue || !moving)desired=yaw;
             if(!moving)return;
             desired+=wz*.02;
             double error=Math.Atan2(Math.Sin(desired.Value-yaw),Math.Cos(desired.Value-yaw));
-            double correction=SaiContract.Clamp(1.5*error-.25*(yawRate-wz),-.4,.4);
+            double correction=SaiContract.Clamp(1.5*error-.25*(yawRate-wz),-maxCorrection,maxCorrection);
             for(int leg=0;leg<4;leg++)target[4*leg+3]-=correction*.146/.048;
         }
+    }
+
+    [Serializable] public sealed class SaiStairControl
+    {
+        public double Speed=.12,LiftHeight=.055,LegScale=.18,MinCrouch=0,HeadingCorrection=.4;
+        public bool MotionRelativePhase=false,RouteSteering=false;
+        public double PhaseStart=.5,RouteCenterY=0;
+        public void Validate()
+        {
+            if(!(Speed>=.02 && Speed<=.16 && LiftHeight>=0 && LiftHeight<=.1 && LegScale>=0 && LegScale<=.6 && MinCrouch>=0 && MinCrouch<=1 && HeadingCorrection>0 && HeadingCorrection<=1.2 && PhaseStart>=0 && PhaseStart<3.2)
+                || double.IsNaN(RouteCenterY) || double.IsInfinity(RouteCenterY))
+                throw new ArgumentException("Invalid Sai stair control profile");
+        }
+        // Paired only with the hash-checked actors staged by setup-sai-agent.py.
+        public static SaiStairControl Ascent60()=>new SaiStairControl{Speed=.08,LiftHeight=.07,LegScale=.45,MotionRelativePhase=true};
+        public static SaiStairControl Descent60()=>new SaiStairControl{Speed=.08,MinCrouch=.5,HeadingCorrection=.6,RouteSteering=true,MotionRelativePhase=true};
     }
 }

@@ -16,7 +16,9 @@ class Program
             bool stairs=row.TryGetProperty("stairs",out var s) && s.GetBoolean();
             double time=row.GetProperty("time").GetDouble();var heights=D(row,"heights");
             var obs=SaiContract.Observe(D(row,"q"),D(row,"v"),cmd[0],cmd[1],crouch,F(row,"previous"),time,heights,stairs?3.2:2.4);
-            var target=stairs?SaiContract.StairTargets(F(row,"action"),cmd[0],cmd[1],crouch,time,heights):SaiContract.Targets(F(row,"action"),cmd[0],cmd[1],crouch);
+            double lift=row.TryGetProperty("lift_height",out var lh)?lh.GetDouble():.055;
+            double scale=row.TryGetProperty("leg_scale",out var ls)?ls.GetDouble():.18;
+            var target=stairs?SaiContract.StairTargets(F(row,"action"),cmd[0],cmd[1],crouch,time,heights,lift,scale):SaiContract.Targets(F(row,"action"),cmd[0],cmd[1],crouch);
             var expected=D(row,"observation");var expectedTarget=D(row,"target");
             for(int i=0;i<82;i++)maximum=Math.Max(maximum,Math.Abs(obs[i]-expected[i]));
             for(int i=0;i<16;i++)maximum=Math.Max(maximum,Math.Abs(target[i]-expectedTarget[i]));
@@ -28,7 +30,9 @@ class Program
             foreach(var row in headingRows.EnumerateArray())
             {
                 var cmd=D(row,"command");var target=D(row,"input_target");
-                heading.Apply(target,cmd[0],cmd[1],row.GetProperty("yaw").GetDouble(),row.GetProperty("yaw_rate").GetDouble());
+                double limit=row.TryGetProperty("max_correction",out var mc)?mc.GetDouble():.4;
+                double? desired=row.TryGetProperty("desired_heading",out var dh) && dh.ValueKind!=JsonValueKind.Null?(double?)dh.GetDouble():null;
+                heading.Apply(target,cmd[0],cmd[1],row.GetProperty("yaw").GetDouble(),row.GetProperty("yaw_rate").GetDouble(),limit,desired);
                 var expected=D(row,"target");
                 for(int i=0;i<16;i++)maximum=Math.Max(maximum,Math.Abs(target[i]-expected[i]));
                 n++;
